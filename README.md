@@ -126,10 +126,18 @@ Tamil names* in Settings and the bills print in English only.
 
 ## GST
 
-GST is **on by default at 5%, with the menu rates treated as already including
-it** — the way most cafes here price. Nothing is added at the bottom of the
-bill: a tea marked ₹15 is billed at ₹15, and the bill shows the GST that is
-already inside that amount.
+GST is **off by default** — until the shop is registered, a bill should not
+show a tax breakup for tax nobody is collecting. Bills print exactly as you
+would expect: items, subtotal, total, and no mention of GST anywhere.
+
+Everything is configured and waiting, so when your registration comes through
+it is **one checkbox**: Settings → GST & charges → *This shop charges GST*.
+Nothing else needs changing.
+
+Once switched on, it bills at **5% with the menu rates treated as already
+including it** — the way most cafes here price. Nothing is added at the bottom
+of the bill: a tea marked ₹15 stays ₹15, and the bill discloses the GST that
+is already inside that amount.
 
 ```
 TOTAL                     ₹45.00
@@ -144,14 +152,14 @@ All prices shown above are inclusive of GST.
 
 The breakup always adds back up to the total the guest pays, to the paisa.
 
-In **Settings → GST & charges** you can:
+With GST switched on, **Settings → GST & charges** also lets you:
 
 - switch between *rates already include GST* and *add GST on top of the rate*,
 - change the percentage (5% is the usual restaurant rate) and the name,
 - turn the CGST / SGST split off and print a single GST line instead,
 - edit the note printed on every bill — it reads *"All prices shown above are
   inclusive of GST."* out of the box,
-- switch GST off altogether if you are not registered.
+- switch it back off at any time.
 
 The GSTIN is **optional and starts empty** — bills print perfectly well
 without it, so you can run the counter today and drop the number in whenever
