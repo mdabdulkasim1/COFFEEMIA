@@ -295,6 +295,16 @@ async function handleApi(req, res, pathname, query) {
       const s = data.settings;
       const textKeys = ["cafeName", "cafeNameLocal", "tagline", "address", "phone", "currency", "taxName", "footerNote", "printWidth"];
       for (const k of textKeys) if (k in body) s[k] = str(body[k], k === "footerNote" ? 200 : 120);
+      if ("logo" in body) {
+        // Stored inline as a data: URI so the whole shop stays one JSON file.
+        const logo = String(body.logo || "");
+        if (!logo) s.logo = "";
+        else if (!/^data:image\/(png|jpeg|gif|svg\+xml);/.test(logo)) {
+          return sendError(res, 400, "That does not look like an image file.");
+        } else if (logo.length > 400000) {
+          return sendError(res, 400, "That image is too large — please use a smaller one.");
+        } else s.logo = logo;
+      }
       if ("gstNote" in body) s.gstNote = str(body.gstNote, 200);
       let gstinCheck = gstin.validate(s.gstin);
       if ("gstin" in body) {

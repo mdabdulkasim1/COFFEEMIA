@@ -1587,6 +1587,16 @@
         "</select></label>" +
         '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label></div>' +
         '<label class="field"><span>Footer line on the bill</span><input type="text" name="footerNote" value="' + esc(s.footerNote) + '"></label>' +
+        '<div class="field"><span style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px">Logo printed on the bill</span>' +
+        '<input type="hidden" name="logo" id="logo-data" value="' + esc(s.logo || "") + '">' +
+        '<div class="logo-box" id="logo-box">' +
+        (s.logo ? '<img src="' + esc(s.logo) + '" alt="Current logo">' : '<span class="muted small">No logo — the cafe name is printed instead.</span>') +
+        "</div>" +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">' +
+        '<input type="file" id="logo-file" accept="image/png,image/jpeg,image/svg+xml" style="max-width:260px">' +
+        '<button type="button" class="btn sm" data-act="logo-clear">Remove logo</button>' +
+        '<span class="small muted" id="logo-hint">A plain black-and-white image prints best.</span>' +
+        "</div></div>" +
         '<label class="check"><input type="checkbox" name="trademark"' + (s.trademark !== false ? " checked" : "") + "><span>Show ™ after the cafe name</span></label>" +
         '<label class="check"><input type="checkbox" name="showLocalNames"' + (s.showLocalNames ? " checked" : "") + "><span>Show Tamil names on screen and on the bill</span></label>" +
         '<label class="check"><input type="checkbox" name="roundOff"' + (s.roundOff ? " checked" : "") + "><span>Round the total to the nearest rupee</span></label>" +
@@ -1623,6 +1633,28 @@
 
     const form = document.getElementById("settings-form");
     if (form) form.addEventListener("submit", (e) => { e.preventDefault(); saveSettings(form); });
+
+    const logoFile = document.getElementById("logo-file");
+    if (logoFile) {
+      logoFile.addEventListener("change", guard(async () => {
+        const file = logoFile.files && logoFile.files[0];
+        if (!file) return;
+        const hint = document.getElementById("logo-hint");
+        hint.textContent = "Preparing…";
+        try {
+          const dataUri = await prepareLogo(file);
+          if (dataUri.length > 400000) throw new Error("That image is too detailed — try a simpler black-and-white version.");
+          document.getElementById("logo-data").value = dataUri;
+          document.getElementById("logo-box").innerHTML = '<img src="' + dataUri + '" alt="New logo">';
+          hint.textContent = "Looks good — press Save settings to keep it.";
+        } catch (err) {
+          logoFile.value = "";
+          hint.textContent = err.message;
+          hint.style.color = "var(--red)";
+          throw err;
+        }
+      }));
+    }
 
     const gstinField = document.getElementById("gstin-input");
     if (gstinField) {
@@ -1664,6 +1696,41 @@
       el.innerHTML = '<span style="color:var(--green)">✓ Valid GSTIN' +
         (info.state ? " · registered in " + esc(info.state) : "") + "</span>";
     }
+  }
+
+  /**
+   * Gets an uploaded logo ready for a thermal printer: shrunk to a sane width
+   * and flattened onto white, because a transparent PNG prints as a black slab
+   * on receipt paper. SVG is passed through — it is already crisp at any size.
+   */
+  function prepareLogo(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > 4 * 1024 * 1024) return reject(new Error("That file is very large — please pick one under 4 MB."));
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read that file."));
+      reader.onload = () => {
+        const raw = String(reader.result);
+        if (file.type === "image/svg+xml") return resolve(raw);
+        const img = new Image();
+        img.onerror = () => reject(new Error("That file is not an image we can read."));
+        img.onload = () => {
+          const maxW = 512;
+          const scale = Math.min(1, maxW / img.width);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.src = raw;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   const saveSettings = guard(async function (form) {
@@ -1857,6 +1924,13 @@
 
     /* settings */
     "change-own-password": () => changeOwnPassword(),
+    "logo-clear": () => {
+      document.getElementById("logo-data").value = "";
+      document.getElementById("logo-file").value = "";
+      document.getElementById("logo-box").innerHTML =
+        '<span class="muted small">No logo — the cafe name is printed instead.</span>';
+      document.getElementById("logo-hint").textContent = "Press Save settings to remove it.";
+    },
   };
 
   document.addEventListener("click", (e) => {

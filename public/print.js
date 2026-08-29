@@ -18,10 +18,14 @@
     return d.toLocaleDateString("en-GB") + "  " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   }
   function head(s, title) {
+    // The shop's own artwork when there is one, otherwise the name set as a logo.
+    const mark = s.logo
+      ? '<img class="logo" src="' + s.logo + '" alt="' + esc(s.cafeName || "") + '">'
+      : '<h1>' + esc(s.cafeName || "Cafe") +
+        (s.trademark === false ? "" : '<sup class="tm">TM</sup>') + "</h1>";
     return (
       '<div class="c">' +
-      '<h1>' + esc(s.cafeName || "Cafe") +
-      (s.trademark === false ? "" : '<sup class="tm">TM</sup>') + "</h1>" +
+      mark +
       (s.cafeNameLocal ? '<div class="b ta" style="font-size:14px">' + esc(s.cafeNameLocal) + "</div>" : "") +
       (s.address ? "<div>" + esc(s.address) + "</div>" : "") +
       (s.phone ? "<div>Ph: " + esc(s.phone) + "</div>" : "") +

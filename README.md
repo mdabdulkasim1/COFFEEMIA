@@ -205,8 +205,19 @@ cost more goodwill than the marketing earns.
 
 ## Settings worth knowing
 
-- **Show ™ after the cafe name** puts a raised ™ on the logo — the sign-in
-  screen, the sidebar and the bill header. Untick it and the name prints plain.
+- **Logo printed on the bill** (Settings → Bill & printing) takes your own
+  artwork — PNG, JPG or SVG — and prints it at the top of every bill in place
+  of the name. Upload it, check the preview, press Save. Remove it and the
+  name comes back.
+
+  A plain black-and-white image prints best on a thermal roll; photographs and
+  grey shading come out muddy. The app shrinks whatever you give it and lays it
+  on a white background, so a logo with a transparent background will not print
+  as a black slab.
+
+- **Show ™ after the cafe name** puts a raised ™ on the name — the sign-in
+  screen, the sidebar and the bill header when no logo is set. Untick it and
+  the name prints plain.
 - **Round off** rounds the final total to the nearest rupee and prints the
   adjustment on the bill.
 - **Payment modes** is a plain comma-separated list — add "Swiggy" or "Zomato"
