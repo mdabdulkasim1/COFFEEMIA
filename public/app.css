@@ -50,6 +50,12 @@ a { color: var(--brand-dark); }
 }
 .login-brand { text-align: center; margin-bottom: 26px; }
 .login-brand h1 { margin: 0; font-size: 40px; letter-spacing: -.5px; font-weight: 800; }
+/* Trademark mark on the logo — small, raised, never affecting line height. */
+sup.tm {
+  font-size: .34em; font-weight: 700; vertical-align: super; line-height: 0;
+  letter-spacing: .06em; margin-left: .12em; opacity: .85;
+}
+.sidebar .logo b sup.tm { opacity: .7; }
 .login-brand .local { color: var(--brand); font-size: 17px; margin-top: 2px; }
 .login-brand .rule {
   height: 1px; background: var(--line); margin: 14px auto; width: 70%;
@@ -303,6 +309,7 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 .receipt .kot-item { font-size: 15px; font-weight: 700; padding: 3px 0; }
 .receipt .token { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
 /* Tamil needs a real Tamil face and a little more size than the mono body text. */
+.receipt sup.tm { font-size: .5em; vertical-align: super; line-height: 0; margin-left: 1px; }
 .receipt .ta { font-family: "Noto Sans Tamil", "Latha", "Nirmala UI", sans-serif; font-size: 12px; line-height: 1.5; }
 
 /* ---------------- Responsive ---------------- */

@@ -205,6 +205,8 @@ cost more goodwill than the marketing earns.
 
 ## Settings worth knowing
 
+- **Show ™ after the cafe name** puts a raised ™ on the logo — the sign-in
+  screen, the sidebar and the bill header. Untick it and the name prints plain.
 - **Round off** rounds the final total to the nearest rupee and prints the
   adjustment on the bill.
 - **Payment modes** is a plain comma-separated list — add "Swiggy" or "Zomato"

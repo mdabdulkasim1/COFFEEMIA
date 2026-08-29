@@ -67,6 +67,11 @@
   function plural(n, one, many) {
     return n + " " + (n === 1 ? one : many || one + "s");
   }
+  /** The cafe name as a logo — with the superscript TM when it is switched on. */
+  function brandName(name) {
+    const text = esc(name || S.settings.cafeName || "Cafe");
+    return text + (S.settings.trademark === false ? "" : '<sup class="tm">™</sup>');
+  }
   function isAdmin() {
     return S.user && S.user.role === "admin";
   }
@@ -179,7 +184,7 @@
     app.innerHTML =
       '<div class="login-wrap"><div class="login-card">' +
       '<div class="login-brand">' +
-      "<h1>" + esc(S.settings.cafeName || "Coffeemia") + "</h1>" +
+      "<h1>" + brandName(S.settings.cafeName || "Coffeemia") + "</h1>" +
       (S.settings.cafeNameLocal !== undefined
         ? '<div class="local">' + esc(S.settings.cafeNameLocal || "காஃபீமியா") + "</div>"
         : '<div class="local">காஃபீமியா</div>') +
@@ -326,7 +331,7 @@
     app.innerHTML =
       '<div class="shell">' +
       '<aside class="sidebar" id="sidebar">' +
-      '<div class="logo"><b>' + esc(S.settings.cafeName || "Cafe") + "</b><span>Point of sale</span></div>" +
+      '<div class="logo"><b>' + brandName() + "</b><span>Point of sale</span></div>" +
       nav +
       '<div class="foot"><b>' + esc(S.user.name) + "</b>" +
       (isAdmin() ? "Admin" : "Counter staff") + " · " + esc(S.user.username) +
@@ -1582,6 +1587,7 @@
         "</select></label>" +
         '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label></div>' +
         '<label class="field"><span>Footer line on the bill</span><input type="text" name="footerNote" value="' + esc(s.footerNote) + '"></label>' +
+        '<label class="check"><input type="checkbox" name="trademark"' + (s.trademark !== false ? " checked" : "") + "><span>Show ™ after the cafe name</span></label>" +
         '<label class="check"><input type="checkbox" name="showLocalNames"' + (s.showLocalNames ? " checked" : "") + "><span>Show Tamil names on screen and on the bill</span></label>" +
         '<label class="check"><input type="checkbox" name="roundOff"' + (s.roundOff ? " checked" : "") + "><span>Round the total to the nearest rupee</span></label>" +
         "</div></div>" +

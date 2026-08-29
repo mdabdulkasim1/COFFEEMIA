@@ -20,7 +20,8 @@
   function head(s, title) {
     return (
       '<div class="c">' +
-      '<h1>' + esc(s.cafeName || "Cafe") + "</h1>" +
+      '<h1>' + esc(s.cafeName || "Cafe") +
+      (s.trademark === false ? "" : '<sup class="tm">TM</sup>') + "</h1>" +
       (s.cafeNameLocal ? '<div class="b ta" style="font-size:14px">' + esc(s.cafeNameLocal) + "</div>" : "") +
       (s.address ? "<div>" + esc(s.address) + "</div>" : "") +
       (s.phone ? "<div>Ph: " + esc(s.phone) + "</div>" : "") +
