@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#221f1c" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Coffeemia POS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%98%95%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div id="app"><div class="boot">Loading…</div></div>
+<!-- Outside #app on purpose: screen re-renders must never clear a pending receipt. -->
+<div id="print-area"></div>
+<script src="charts.js"></script>
+<script src="print.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

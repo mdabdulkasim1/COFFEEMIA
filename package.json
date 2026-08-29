@@ -1,0 +1,14 @@
+{
+  "name": "coffeemia-pos",
+  "version": "1.0.0",
+  "description": "Point of sale for Coffeemia — table orders, kitchen tickets, printed bills, editable rates and a sales dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
