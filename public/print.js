@@ -105,6 +105,7 @@
       "<tr><td>" + esc(o.tableName || "Counter") + "</td><td class=\"r\">Token " + (o.token || "-") + "</td></tr>" +
       "<tr><td>Mode</td><td class=\"r\">" + esc(String(o.mode || "").replace("-", " ").toUpperCase()) + "</td></tr>" +
       (o.customer && o.customer.name ? "<tr><td>Guest</td><td class=\"r\">" + esc(o.customer.name) + "</td></tr>" : "") +
+      (o.customer && o.customer.phone ? "<tr><td>Mobile</td><td class=\"r\">" + esc(o.customer.phone) + "</td></tr>" : "") +
       "<tr><td>Billed by</td><td class=\"r\">" + esc(o.paidByName || o.createdByName || "") + "</td></tr></table>" +
       '<div class="sep"></div>' +
       '<table><tr class="b"><td>#</td><td>Item</td><td class="r">Qty</td><td class="r">Rate</td><td class="r">Amt</td></tr>' +

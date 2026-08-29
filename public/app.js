@@ -264,6 +264,7 @@
     bills: { title: "Bills & reports", render: renderBills },
     menu: { title: "Menu & rates", render: renderMenu, admin: true },
     tables: { title: "Table layout", render: renderTablesAdmin, admin: true },
+    guests: { title: "Guests", render: renderGuests, admin: true },
     staff: { title: "Staff & access", render: renderStaff, admin: true },
     settings: { title: "Settings", render: renderSettings },
   };
@@ -300,6 +301,7 @@
     { key: "bills", label: "Bills", icon: "🧾" },
     { group: "Business" },
     { key: "dashboard", label: "Dashboard", icon: "📊" },
+    { key: "guests", label: "Guests", icon: "📱", admin: true },
     { key: "menu", label: "Menu & rates", icon: "📋", admin: true },
     { key: "tables", label: "Table layout", icon: "🪑", admin: true },
     { key: "staff", label: "Staff & access", icon: "👥", admin: true },
@@ -794,7 +796,18 @@
         chips.map((v) => '<button type="button" class="btn sm" data-cash="' + v + '">' + fmt(v) + "</button>").join("") +
         "</div>" +
         '<div class="tline grand" style="border:0;margin:0"><span>Change</span><span id="pay-change">' + fmt(0) + "</span></div>" +
-        '<label class="field" style="margin-top:12px"><span>Note (optional)</span><input type="text" name="note" placeholder="e.g. paid by GPay"></label>',
+        '<label class="field" style="margin-top:12px"><span>Note (optional)</span><input type="text" name="note" placeholder="e.g. paid by GPay"></label>' +
+        '<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">' +
+        '<div class="row">' +
+        '<label class="field" style="margin:0"><span>Guest mobile (optional)</span>' +
+        '<input type="tel" name="customerPhone" id="pay-phone" inputmode="tel" maxlength="20" ' +
+        'autocomplete="off" placeholder="10 digits" value="' + esc(order.customer ? order.customer.phone || "" : "") + '"></label>' +
+        '<label class="field" style="margin:0"><span>Guest name</span>' +
+        '<input type="text" name="customerName" id="pay-name" maxlength="60" ' +
+        'value="' + esc(order.customer ? order.customer.name || "" : "") + '"></label>' +
+        "</div>" +
+        '<div id="pay-guest-hint" class="small muted" style="margin-top:2px">Ask only if the guest is happy to give it. It prints on the bill.</div>' +
+        "</div>",
       onOpen(host) {
         const received = host.querySelector('[name="received"]');
         const hidden = host.querySelector('[name="mode"]');
@@ -805,6 +818,45 @@
           change.style.color = diff < 0 ? "var(--red)" : "var(--ink)";
         };
         received.addEventListener("input", update);
+
+        const phone = host.querySelector("#pay-phone");
+        const guestName = host.querySelector("#pay-name");
+        const guestHint = host.querySelector("#pay-guest-hint");
+        let lookupTimer = null;
+        const IDLE_HINT = "Ask only if the guest is happy to give it. It prints on the bill.";
+        phone.addEventListener("input", () => {
+          const raw = phone.value.trim();
+          const digits = phone.value.replace(/\D/g, "").slice(-10);
+          clearTimeout(lookupTimer);
+          guestHint.style.color = "";
+          if (!raw) {
+            guestHint.textContent = IDLE_HINT;
+            return;
+          }
+          if (digits.length < 10) {
+            guestHint.textContent = digits.length + " of 10 digits…";
+            return;
+          }
+          if (!/^[6-9]\d{9}$/.test(digits)) {
+            guestHint.style.color = "var(--red)";
+            guestHint.textContent = "That is not a valid mobile number — it will not be saved.";
+            return;
+          }
+          lookupTimer = setTimeout(async () => {
+            try {
+              const out = await api("/customers/lookup?phone=" + encodeURIComponent(digits));
+              if (!out.customer) {
+                guestHint.textContent = "New guest.";
+                return;
+              }
+              const c = out.customer;
+              if (c.name && !guestName.value.trim()) guestName.value = c.name;
+              guestHint.textContent =
+                (c.name ? c.name + " · " : "") + plural(c.visits, "visit") +
+                " · " + fmt(c.spent) + " so far" + (c.favourite ? " · usually " + c.favourite : "");
+            } catch (e) { /* lookup is a convenience; never block the payment */ }
+          }, 350);
+        });
         host.addEventListener("click", (e) => {
           const pay = e.target.closest("[data-pay]");
           if (pay) {
@@ -828,7 +880,10 @@
 
     const out = await api("/orders/" + order.id + "/pay", {
       method: "POST",
-      body: { mode: result.mode, received: Number(result.received), note: result.note },
+      body: {
+        mode: result.mode, received: Number(result.received), note: result.note,
+        customerPhone: result.customerPhone, customerName: result.customerName,
+      },
     });
     Print.bill(out.order, S.settings);
     toast("Bill #" + out.order.no + " settled · " + fmt(out.order.totals.total), "good");
@@ -1170,6 +1225,60 @@
     });
     if (result) Print.bill(o, S.settings, { reprint: true });
   });
+
+  /* ================================================================== */
+  /* Guests (admin)                                                     */
+  /* ================================================================== */
+  async function renderGuests() {
+    screen().innerHTML = '<div class="empty">Loading guests…</div>';
+    const all = (await api("/customers")).customers;
+    const q = (S.view.guestQ || "").trim().toLowerCase();
+    const list = q
+      ? all.filter((c) => c.phone.includes(q) || (c.name || "").toLowerCase().includes(q))
+      : all;
+
+    const spent = all.reduce((n, c) => n + c.spent, 0);
+    const repeat = all.filter((c) => c.visits > 1).length;
+    setSub(all.length ? plural(all.length, "number") + " collected" : "No numbers yet");
+
+    const rows = list.map((c) =>
+      "<tr><td><b>" + esc(c.phone) + "</b>" +
+      (c.name ? '<div class="small muted">' + esc(c.name) + "</div>" : "") + "</td>" +
+      '<td class="num">' + c.visits + "</td>" +
+      '<td class="num"><b>' + fmt(c.spent) + '</b><div class="small muted">' + fmt(c.average) + " avg</div></td>" +
+      '<td class="small">' + esc(c.favourite || "—") + "</td>" +
+      '<td class="small">' + esc(c.lastVisit) + '<div class="muted">first ' + esc(c.firstVisit) + "</div></td>" +
+      "</tr>"
+    ).join("");
+
+    screen().innerHTML =
+      '<div class="kpis">' +
+      '<div class="kpi brand"><div class="lbl">Numbers collected</div><div class="val">' + all.length + '</div><div class="sub">from settled bills</div></div>' +
+      '<div class="kpi"><div class="lbl">Repeat guests</div><div class="val">' + repeat + '</div><div class="sub">came back more than once</div></div>' +
+      '<div class="kpi"><div class="lbl">Spent by these guests</div><div class="val">' + fmt(spent) + '</div><div class="sub">across every visit</div></div>' +
+      "</div>" +
+      '<div class="filters">' +
+      '<label class="field"><span>Search</span><input type="text" id="guest-q" placeholder="number or name" value="' + esc(S.view.guestQ || "") + '"></label>' +
+      '<button class="btn primary" data-act="guests-search">Search</button>' +
+      '<span style="flex:1"></span>' +
+      '<button class="btn" data-act="export-guests">⬇ Download for WhatsApp / SMS</button>' +
+      "</div>" +
+      '<div class="card">' +
+      (rows
+        ? '<div style="overflow-x:auto"><table class="grid"><thead><tr>' +
+          '<th>Mobile</th><th class="num">Visits</th><th class="num">Spent</th><th>Usual order</th><th>Last visit</th>' +
+          "</tr></thead><tbody>" + rows + "</tbody></table></div>"
+        : '<div class="empty"><div class="big">📱</div>' +
+          (all.length ? "No guest matches that search." :
+            "No numbers yet.<div class=\"small\" style=\"margin-top:8px\">Ask for a mobile number on the settle screen and guests will build up here.</div>") +
+          "</div>") +
+      "</div>" +
+      '<p class="small muted" style="margin-top:14px;max-width:70ch">Numbers are only saved when a guest gives one — nothing is collected automatically. ' +
+      "Tell guests what you will use it for, and give them a way to opt out of messages.</p>";
+
+    const box = document.getElementById("guest-q");
+    if (box) box.addEventListener("keydown", (e) => { if (e.key === "Enter") HANDLERS["guests-search"](); });
+  }
 
   /* ================================================================== */
   /* Menu & rates (admin)                                               */
@@ -1684,6 +1793,12 @@
       Print.bill(out.order, S.settings, { reprint: true });
     }),
     "day-close": () => dayClose(),
+    "guests-search": () => {
+      const box = document.getElementById("guest-q");
+      S.view.guestQ = box ? box.value : "";
+      renderGuests();
+    },
+    "export-guests": () => { window.location.href = "/api/export/customers.csv"; },
     "export-csv": () => exportCsv(),
 
     /* menu admin */

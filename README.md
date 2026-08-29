@@ -176,6 +176,33 @@ but it almost always means a typo, so compare the two before carrying on.
 The dashboard and the day-close report both show the taxable value alongside
 the GST collected, so the figures are ready for a return.
 
+## Guest mobile numbers
+
+The settle screen has an optional **Guest mobile** box. Type a number and the
+app recognises a returning guest straight away — their name fills itself in and
+the hint shows how many visits and what they usually order, so the counter can
+greet them properly.
+
+- Numbers are stored as a bare 10 digits, so `+91 98765 43210`, `098765 43210`
+  and `98765-43210` are all the same guest.
+- Anything that is not a real mobile number is refused **on screen**, so a
+  mistyped number is never quietly thrown away.
+- The number prints on the bill, under the guest's name.
+- A bill never waits on it — leave the box empty and settle as normal.
+
+**Guests** (admin only) lists every number collected, with visits, total spent,
+average bill, usual order and last visit, and a search box. **Download for
+WhatsApp / SMS** exports the lot as a CSV you can load into any bulk-messaging
+tool. The sales CSV carries the number too, against each bill.
+
+Counter staff cannot open the guest list or the export. They can only look up a
+single number they have just been given, which is what the greeting needs.
+
+A word on doing this properly: only save a number the guest is happy to give,
+tell them what you will use it for, and give them a way to stop the messages.
+Numbers collected for a bill and then used for marketing without a word tend to
+cost more goodwill than the marketing earns.
+
 ## Settings worth knowing
 
 - **Round off** rounds the final total to the nearest rupee and prints the

@@ -20,7 +20,10 @@ const db = require("./lib/db");
 const auth = require("./lib/auth");
 const { seedIfEmpty, warnIfDefaultPasswords } = require("./lib/seed");
 const { computeTotals, money, clampQty } = require("./lib/pricing");
-const { buildReport, ordersToCsv, dateKey, todayKey } = require("./lib/reports");
+const {
+  buildReport, ordersToCsv, buildCustomers, customersToCsv,
+  normalisePhone, dateKey, todayKey,
+} = require("./lib/reports");
 const gstin = require("./lib/gstin");
 
 const PORT = process.env.PORT || 3100;
@@ -593,7 +596,7 @@ async function handleApi(req, res, pathname, query) {
         lines: normaliseLines(data, body.lines, []),
         discountType: body.discountType === "percent" ? "percent" : "amount",
         discountValue: Math.max(0, num(body.discountValue, 0)),
-        customer: { name: str(body.customerName, 60), phone: str(body.customerPhone, 20) },
+        customer: { name: str(body.customerName, 60), phone: normalisePhone(body.customerPhone) },
         note: str(body.note, 200),
         kotCount: 0,
         voidLog: [],
@@ -676,6 +679,9 @@ async function handleApi(req, res, pathname, query) {
       applyTotals(data, order);
       const mode = str(body.mode, 20) || "Cash";
       const received = Math.max(0, num(body.received, order.totals.total));
+      order.customer = order.customer || { name: "", phone: "" };
+      if ("customerPhone" in body) order.customer.phone = normalisePhone(body.customerPhone);
+      if ("customerName" in body) order.customer.name = str(body.customerName, 60);
       order.payment = {
         mode,
         received: money(received),
@@ -727,7 +733,7 @@ async function handleApi(req, res, pathname, query) {
         order.tableName = target ? target.name : order.mode === "parcel" ? "Parcel" : "Takeaway";
       }
       if ("customerName" in body) order.customer.name = str(body.customerName, 60);
-      if ("customerPhone" in body) order.customer.phone = str(body.customerPhone, 20);
+      if ("customerPhone" in body) order.customer.phone = normalisePhone(body.customerPhone);
       if ("note" in body) order.note = str(body.note, 200);
       applyTotals(data, order);
       order.updatedAt = new Date().toISOString();
@@ -737,6 +743,27 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ---------- reports ---------- */
+  if (route[0] === "customers") {
+    // Lookup is open to the counter so a returning guest's name fills itself in;
+    // it answers for one exact number only, never a list.
+    if (route[1] === "lookup" && method === "GET") {
+      const phone = normalisePhone(query.phone);
+      if (!phone) return send(res, 200, { customer: null });
+      const match = buildCustomers(data).find((c) => c.phone === phone);
+      return send(res, 200, { customer: match || null });
+    }
+    if (needAdmin()) return;
+    if (method === "GET") return send(res, 200, { customers: buildCustomers(data) });
+  }
+
+  if (route[0] === "export" && route[1] === "customers.csv" && method === "GET") {
+    if (needAdmin()) return;
+    return send(res, 200, customersToCsv(buildCustomers(data)), {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="coffeemia-guests-${todayKey()}.csv"`,
+    });
+  }
+
   if (route[0] === "dashboard" && method === "GET") {
     let from = str(query.from, 10) || todayKey();
     let to = str(query.to, 10) || from;
