@@ -50,22 +50,22 @@ a { color: var(--brand-dark); }
 }
 .login-brand { text-align: center; margin-bottom: 26px; }
 .login-brand h1 { margin: 0; font-size: 40px; letter-spacing: -.5px; font-weight: 800; }
-/* Trademark mark on the logo — small, raised, never affecting line height. */
+/* Preview box for the logo uploaded in Settings. */
 .logo-box {
   border: 1px dashed var(--line); border-radius: var(--radius-sm); background: #fff;
   min-height: 76px; display: grid; place-items: center; padding: 10px;
 }
 .logo-box img { max-width: 260px; max-height: 90px; object-fit: contain; }
+/* The cup and the trademark mark that sit beside the name on the logo. */
+.brand-cup {
+  height: .78em; width: auto; margin-left: .22em; vertical-align: baseline;
+  color: var(--brand); display: inline-block;
+}
 sup.tm {
   font-size: .34em; font-weight: 700; vertical-align: super; line-height: 0;
   letter-spacing: .06em; margin-left: .12em; opacity: .85;
 }
-.sidebar .logo b .logo-box {
-  border: 1px dashed var(--line); border-radius: var(--radius-sm); background: #fff;
-  min-height: 76px; display: grid; place-items: center; padding: 10px;
-}
-.logo-box img { max-width: 260px; max-height: 90px; object-fit: contain; }
-sup.tm { opacity: .7; }
+.sidebar .logo b sup.tm { opacity: .7; }
 .login-brand .local { color: var(--brand); font-size: 17px; margin-top: 2px; }
 .login-brand .rule {
   height: 1px; background: var(--line); margin: 14px auto; width: 70%;
@@ -318,13 +318,14 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 .receipt .big { font-size: 15px; font-weight: 700; }
 .receipt .kot-item { font-size: 15px; font-weight: 700; padding: 3px 0; }
 .receipt .token { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+/* The shop's own artwork at the head of the bill, kept inside the roll width. */
+.receipt .logo { max-width: 100%; max-height: 22mm; object-fit: contain; margin: 0 auto 3px; display: block; }
+.receipt.w58 .logo { max-height: 18mm; }
+/* A thermal head is monochrome: the cup must be solid black, never a colour it
+   would have to dither into muddy grey. */
+.receipt .brand-cup { height: .8em; width: auto; margin-left: 2px; color: #000; }
+.receipt sup.tm { font-size: .5em; vertical-align: super; line-height: 0; margin-left: 1px; }
 /* Tamil needs a real Tamil face and a little more size than the mono body text. */
-.receipt .logo-box {
-  border: 1px dashed var(--line); border-radius: var(--radius-sm); background: #fff;
-  min-height: 76px; display: grid; place-items: center; padding: 10px;
-}
-.logo-box img { max-width: 260px; max-height: 90px; object-fit: contain; }
-sup.tm { font-size: .5em; vertical-align: super; line-height: 0; margin-left: 1px; }
 .receipt .ta { font-family: "Noto Sans Tamil", "Latha", "Nirmala UI", sans-serif; font-size: 12px; line-height: 1.5; }
 
 /* ---------------- Responsive ---------------- */

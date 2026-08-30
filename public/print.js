@@ -6,6 +6,10 @@
 (function (global) {
   "use strict";
 
+  /* Same cup as the screen logo; vector, so the printer rasterises it sharp. */
+  const CUP =
+    '<svg class="brand-cup" viewBox="0 0 44 32" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M16.6 9.1c-1.9-1.7.5-2.9-1.4-4.6"/><path d="M21.6 9.1c-1.9-1.7.5-2.9-1.4-4.6"/></g><path d="M28.8 13.4h2.6c2.9 0 5.1 1.9 5.1 4.5s-2.2 4.5-5.1 4.5h-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M4.4 12.1h25.1v4.4c0 5.4-4 9.2-9.6 9.2h-5.9c-5.6 0-9.6-3.8-9.6-9.2z" fill="currentColor"/><ellipse cx="19.2" cy="28.4" rx="14.6" ry="1.9" fill="currentColor"/></svg>';
+
   function esc(s) {
     return String(s === null || s === undefined ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -22,7 +26,7 @@
     const mark = s.logo
       ? '<img class="logo" src="' + s.logo + '" alt="' + esc(s.cafeName || "") + '">'
       : '<h1>' + esc(s.cafeName || "Cafe") +
-        (s.trademark === false ? "" : '<sup class="tm">TM</sup>') + "</h1>";
+        (s.trademark === false ? "" : '<sup class="tm">TM</sup>') + CUP + "</h1>";
     return (
       '<div class="c">' +
       mark +

@@ -67,10 +67,17 @@
   function plural(n, one, many) {
     return n + " " + (n === 1 ? one : many || one + "s");
   }
-  /** The cafe name as a logo — with the superscript TM when it is switched on. */
+  /* The steaming cup from the shop's logo, drawn rather than loaded, so it
+     stays sharp at any size and prints crisply on a thermal roll. */
+  const BRAND_CUP =
+    '<svg class="brand-cup" viewBox="0 0 44 32" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M16.6 9.1c-1.9-1.7.5-2.9-1.4-4.6"/><path d="M21.6 9.1c-1.9-1.7.5-2.9-1.4-4.6"/></g><path d="M28.8 13.4h2.6c2.9 0 5.1 1.9 5.1 4.5s-2.2 4.5-5.1 4.5h-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M4.4 12.1h25.1v4.4c0 5.4-4 9.2-9.6 9.2h-5.9c-5.6 0-9.6-3.8-9.6-9.2z" fill="currentColor"/><ellipse cx="19.2" cy="28.4" rx="14.6" ry="1.9" fill="currentColor"/></svg>';
+
+  /** The cafe name as a logo — TM mark and cup, matching the printed artwork. */
   function brandName(name) {
     const text = esc(name || S.settings.cafeName || "Cafe");
-    return text + (S.settings.trademark === false ? "" : '<sup class="tm">™</sup>');
+    return text +
+      (S.settings.trademark === false ? "" : '<sup class="tm">™</sup>') +
+      BRAND_CUP;
   }
   function isAdmin() {
     return S.user && S.user.role === "admin";
