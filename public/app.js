@@ -1594,13 +1594,36 @@
         "</select></label>" +
         '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label></div>' +
         '<label class="field"><span>Footer line on the bill</span><input type="text" name="footerNote" value="' + esc(s.footerNote) + '"></label>' +
-        '<div class="row"><label class="field" style="margin:0"><span>UPI ID for scan-to-pay</span>' +
+        '<label class="field"><span>Payment QR on the bill</span><select name="qrSource" id="qr-source">' +
+        '<option value="none"' + (s.qrSource === "none" || !s.qrSource ? " selected" : "") + ">Don't print one</option>" +
+        '<option value="image"' + (s.qrSource === "image" ? " selected" : "") + ">Use my bank's QR (upload the picture)</option>" +
+        '<option value="upi"' + (s.qrSource === "upi" ? " selected" : "") + ">Make one from my UPI ID (fills in the amount)</option>" +
+        "</select></label>" +
+
+        '<div id="qr-image-pane" style="display:none">' +
+        '<input type="hidden" name="bankQr" id="bankqr-data" value="' + esc(s.bankQr || "") + '">' +
+        '<div class="logo-box" id="bankqr-box">' +
+        (s.bankQr ? '<img src="' + esc(s.bankQr) + '" alt="Bank QR">' : '<span class="muted small">No QR uploaded yet.</span>') +
+        "</div>" +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">' +
+        '<input type="file" id="bankqr-file" accept="image/png,image/jpeg" style="max-width:250px">' +
+        '<button type="button" class="btn sm" data-act="bankqr-clear">Remove</button></div>' +
+        '<div id="bankqr-hint" class="small muted" style="margin-top:6px">' +
+        "Use the picture file your bank gave you, or a clear screenshot. A photo of a sticker usually will not scan." +
+        "</div>" +
+        '<label class="field" style="margin-top:10px"><span>Line printed above the QR</span>' +
+        '<input type="text" name="bankQrNote" value="' + esc(s.bankQrNote || "Scan to pay") + '"></label>' +
+        "</div>" +
+
+        '<div id="qr-upi-pane" style="display:none">' +
+        '<div class="row"><label class="field" style="margin:0"><span>UPI ID</span>' +
         '<input type="text" name="upiId" id="upi-id" autocapitalize="none" spellcheck="false" ' +
         'placeholder="coffeemia@hdfcbank" value="' + esc(s.upiId || "") + '"></label>' +
         '<label class="field" style="margin:0"><span>Name the payer sees</span>' +
         '<input type="text" name="upiName" value="' + esc(s.upiName || "") + '" placeholder="' + esc(s.cafeName || "") + '"></label></div>' +
-        '<div id="upi-hint" class="small muted" style="margin:4px 0 10px"></div>' +
-        '<label class="check"><input type="checkbox" name="upiQrOnBill"' + (s.upiQrOnBill !== false ? " checked" : "") + "><span>Print a scan-to-pay QR on the bill</span></label>" +
+        '<div id="upi-hint" class="small muted" style="margin:4px 0 4px"></div></div>' +
+
+        '<label class="check" style="margin-top:10px"><input type="checkbox" name="upiQrOnBill"' + (s.upiQrOnBill !== false ? " checked" : "") + "><span>Print the QR on bills (off for Cash bills either way)</span></label>" +
         '<div class="field"><span style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px">Logo printed on the bill</span>' +
         '<input type="hidden" name="logo" id="logo-data" value="' + esc(s.logo || "") + '">' +
         '<div class="logo-box" id="logo-box">' +
@@ -1647,6 +1670,46 @@
 
     const form = document.getElementById("settings-form");
     if (form) form.addEventListener("submit", (e) => { e.preventDefault(); saveSettings(form); });
+
+    const source = document.getElementById("qr-source");
+    if (source) {
+      const sync = () => {
+        document.getElementById("qr-image-pane").style.display = source.value === "image" ? "" : "none";
+        document.getElementById("qr-upi-pane").style.display = source.value === "upi" ? "" : "none";
+      };
+      source.addEventListener("change", sync);
+      sync();
+    }
+
+    const bankFile = document.getElementById("bankqr-file");
+    if (bankFile) {
+      bankFile.addEventListener("change", guard(async () => {
+        const file = bankFile.files && bankFile.files[0];
+        if (!file) return;
+        const hint = document.getElementById("bankqr-hint");
+        hint.style.color = "";
+        hint.textContent = "Checking the picture…";
+        try {
+          const prepared = await prepareBankQr(file);
+          document.getElementById("bankqr-data").value = prepared.dataUri;
+          document.getElementById("bankqr-box").innerHTML = '<img src="' + prepared.dataUri + '" alt="Bank QR">';
+          if (prepared.decoded) {
+            hint.style.color = "var(--green)";
+            hint.textContent = "Scans correctly. Press Save settings to use it.";
+          } else {
+            hint.style.color = "var(--red)";
+            hint.textContent =
+              "This picture will not scan. Use the image file from your bank, or a clear " +
+              "screenshot of the QR — a photo of a printed sticker rarely works.";
+          }
+        } catch (err) {
+          bankFile.value = "";
+          hint.style.color = "var(--red)";
+          hint.textContent = err.message;
+          throw err;
+        }
+      }));
+    }
 
     const upiField = document.getElementById("upi-id");
     if (upiField) {
@@ -1777,6 +1840,62 @@
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  /** Loads a script once, on demand. The QR reader is big and only Settings needs it. */
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector('script[src="' + src + '"]')) return resolve();
+      const el = document.createElement("script");
+      el.src = src;
+      el.onload = () => resolve();
+      el.onerror = () => reject(new Error("Could not load " + src));
+      document.head.appendChild(el);
+    });
+  }
+
+  /**
+   * Prepares an uploaded bank QR for a thermal printer, then checks it still
+   * scans. A QR needs its module edges kept sharp, so this keeps more detail
+   * than the logo does and turns off the browser's smoothing.
+   */
+  async function prepareBankQr(file) {
+    if (file.size > 8 * 1024 * 1024) throw new Error("That file is very large — please pick one under 8 MB.");
+    const raw = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("Could not read that file."));
+      r.onload = () => resolve(String(r.result));
+      r.readAsDataURL(file);
+    });
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onerror = () => reject(new Error("That file is not an image we can read."));
+      i.onload = () => resolve(i);
+      i.src = raw;
+    });
+
+    const maxW = 600;
+    const scale = Math.min(1, maxW / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = false; // keep module edges crisp
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    let decoded = false;
+    try {
+      await loadScript("jsqr.js");
+      const px = ctx.getImageData(0, 0, w, h);
+      const read = window.jsQR && window.jsQR(px.data, w, h);
+      decoded = !!(read && read.data);
+    } catch (e) { decoded = false; }
+
+    return { dataUri: canvas.toDataURL("image/png"), decoded };
   }
 
   const saveSettings = guard(async function (form) {
@@ -1970,6 +2089,15 @@
 
     /* settings */
     "change-own-password": () => changeOwnPassword(),
+    "bankqr-clear": () => {
+      document.getElementById("bankqr-data").value = "";
+      document.getElementById("bankqr-file").value = "";
+      document.getElementById("bankqr-box").innerHTML =
+        '<span class="muted small">No QR uploaded yet.</span>';
+      const h = document.getElementById("bankqr-hint");
+      h.style.color = "";
+      h.textContent = "Press Save settings to remove it.";
+    },
     "logo-clear": () => {
       document.getElementById("logo-data").value = "";
       document.getElementById("logo-file").value = "";

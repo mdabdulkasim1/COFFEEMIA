@@ -176,14 +176,26 @@ but it almost always means a typo, so compare the two before carrying on.
 The dashboard and the day-close report both show the taxable value alongside
 the GST collected, so the figures are ready for a return.
 
-## UPI scan-to-pay on the bill
+## Payment QR on the bill
 
-Put your **UPI ID** in Settings → Bill & printing (it looks like
-`coffeemia@hdfcbank`) and every bill prints a QR with that bill's exact amount
-already in it. The guest scans, their app opens showing your name and the
-amount, they pay. No typing the amount, so no wrong-amount mistakes.
+Settings → Bill & printing → **Payment QR on the bill** offers two ways, or
+none at all (the default — nothing prints until you choose):
 
-**Your account number is never used for this and should never be entered
+**Use my bank's QR.** Upload the QR picture your bank gave you and it prints on
+every bill exactly as supplied. It is your own verified merchant QR, so there
+is nothing to type and nothing to get wrong. Being a fixed picture it cannot
+carry the amount, so the bill prints *"Please enter ₹120"* beside it.
+
+The upload is checked by actually reading the picture: if it cannot be scanned
+you are told so before you save, rather than finding out from a customer.
+Use the image file from the bank or a clear screenshot — a photo of a printed
+sticker usually will not scan.
+
+**Make one from my UPI ID.** Enter your UPI ID (`coffeemia@hdfcbank`) and each
+bill gets a QR with that bill's exact amount already in it. The guest scans and
+pays without typing anything, so there are no wrong-amount mistakes.
+
+Either way, **your account number is never used and should never be entered
 anywhere in the app.** A UPI ID is the public-facing identifier — that is the
 whole point of it. If you do not have a merchant one, your bank can issue it.
 

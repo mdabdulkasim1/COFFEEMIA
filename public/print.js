@@ -55,24 +55,41 @@
     return s && s.printWidth === "58mm" ? "w58" : "";
   }
 
-  /** Scan-to-pay block: the shop's UPI ID with this bill's exact amount. */
+  /**
+   * Scan-to-pay block. Either the shop's own bank QR printed as-is, or one
+   * generated from the UPI ID that already carries this bill's amount.
+   */
   function upiBlock(order, totals, s) {
-    if (!s.upiId || s.upiQrOnBill === false) return "";
+    if (s.upiQrOnBill === false) return "";
     if (order.payment && String(order.payment.mode || "").toLowerCase() === "cash") return "";
-    if (!global.UPI || !global.qrcode) return "";
-    const uri = global.UPI.buildUri({
-      upiId: s.upiId,
-      payeeName: s.upiName || s.cafeName,
-      amount: totals.total,
-      note: order.no ? "Bill " + order.no : "",
-    });
-    if (!uri) return "";
-    return (
-      '<div class="sep"></div><div class="c">' +
-      '<div class="b">Scan to pay ' + esc(s.currency || "") + amt(totals.total) + "</div>" +
-      global.UPI.svg(uri, { size: 150 }) +
-      '<div style="font-size:10px">' + esc(s.upiId) + "</div></div>"
-    );
+
+    if (s.qrSource === "image" && s.bankQr) {
+      // A bank QR is static: it cannot carry the amount, so the amount is
+      // printed beside it for the guest to enter.
+      return (
+        '<div class="sep"></div><div class="c">' +
+        '<div class="b">' + esc(s.bankQrNote || "Scan to pay") + " " + esc(s.currency || "") + amt(totals.total) + "</div>" +
+        '<img class="bank-qr" src="' + s.bankQr + '" alt="Scan to pay">' +
+        '<div style="font-size:10px">Please enter ' + esc(s.currency || "") + amt(totals.total) + "</div></div>"
+      );
+    }
+
+    if (s.qrSource === "upi" && s.upiId && global.UPI && global.qrcode) {
+      const uri = global.UPI.buildUri({
+        upiId: s.upiId,
+        payeeName: s.upiName || s.cafeName,
+        amount: totals.total,
+        note: order.no ? "Bill " + order.no : "",
+      });
+      if (!uri) return "";
+      return (
+        '<div class="sep"></div><div class="c">' +
+        '<div class="b">Scan to pay ' + esc(s.currency || "") + amt(totals.total) + "</div>" +
+        global.UPI.svg(uri, { size: 150 }) +
+        '<div style="font-size:10px">' + esc(s.upiId) + "</div></div>"
+      );
+    }
+    return "";
   }
 
   /* ---------------- Customer bill ---------------- */

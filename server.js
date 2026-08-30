@@ -313,6 +313,19 @@ async function handleApi(req, res, pathname, query) {
         s.upiId = vpa;
       }
       if ("upiName" in body) s.upiName = str(body.upiName, 60);
+      if ("qrSource" in body) {
+        s.qrSource = ["upi", "image"].includes(body.qrSource) ? body.qrSource : "none";
+      }
+      if ("bankQrNote" in body) s.bankQrNote = str(body.bankQrNote, 60);
+      if ("bankQr" in body) {
+        const img = String(body.bankQr || "");
+        if (!img) s.bankQr = "";
+        else if (!/^data:image\/(png|jpeg|gif);/.test(img)) {
+          return sendError(res, 400, "That does not look like an image file.");
+        } else if (img.length > 700000) {
+          return sendError(res, 400, "That image is too large — please use a smaller one.");
+        } else s.bankQr = img;
+      }
       if ("gstNote" in body) s.gstNote = str(body.gstNote, 200);
       let gstinCheck = gstin.validate(s.gstin);
       if ("gstin" in body) {
