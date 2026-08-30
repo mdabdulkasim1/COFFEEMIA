@@ -286,6 +286,11 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 .kpi.brand .val { color: var(--brand); }
 .two-col { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
 .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+/* Grid children default to min-width:auto and refuse to shrink below their
+   content, which pushes a wide table past the screen instead of letting its
+   own scroll container handle it. */
+.two-col > *, .three-col > *, .kpis > * { min-width: 0; }
+.card { min-width: 0; }
 .bar-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
 .bar-row .nm { font-size: 13.5px; }
 .bar-track { height: 7px; background: var(--cream-2); border-radius: 99px; overflow: hidden; margin-top: 5px; }
@@ -377,5 +382,5 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 .bar-col:hover .bar-col-fill { background: var(--brand-dark); }
 .bar-col-label {
   font-size: 10.5px; color: var(--ink-3); text-align: center; padding-top: 5px; height: 18px;
-  overflow: hidden; white-space: nowrap;
+  white-space: nowrap; overflow: visible;
 }

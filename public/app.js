@@ -1100,6 +1100,8 @@
       (sub ? '<div class="sub">' + esc(sub) + "</div>" : "") + "</div>";
 
     const hourly = fillHours(r.byHour);
+    const weekday = r.byWeekday || [];
+    const everyItem = r.items || [];
     const daily = r.byDay.map((d) => ({ label: d.key.slice(5), value: d.amount }));
 
     screen().innerHTML =
@@ -1116,11 +1118,41 @@
       (r.mine ? kpi("Your counter", fmt(r.mine.amount), r.mine.orders + " bills by you") : "") +
       "</div>" +
       '<div class="two-col" style="margin-bottom:16px">' +
-      '<div class="card"><div class="card-head"><h3>' + (sameDay ? "Sales by hour" : "Sales by day") + "</h3></div>" +
+      '<div class="card"><div class="card-head"><h3>' + (sameDay ? "Sales by hour" : "Sales by day") + "</h3>" +
+      '<div class="spacer"></div><span class="pill muted">' + (sameDay ? "today" : plural(r.byDay.length, "day")) + "</span></div>" +
       '<div class="card-pad">' + Charts.bars(sameDay ? hourly : daily, { currency: cur, empty: "No settled bills in this period yet." }) + "</div></div>" +
       '<div class="card"><div class="card-head"><h3>Payments</h3></div><div class="card-pad">' +
       Charts.donut(r.byPayment.map((p) => ({ label: p.key, value: p.amount })), { currency: cur }) + "</div></div>" +
       "</div>" +
+      '<div class="two-col" style="margin-bottom:16px">' +
+      '<div class="card"><div class="card-head"><h3>Busiest hours</h3>' +
+      '<div class="spacer"></div><span class="pill muted">across the period</span></div>' +
+      '<div class="card-pad">' + Charts.bars(hourly, { currency: cur, empty: "No settled bills in this period yet." }) + "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Day of the week</h3></div><div class="card-pad">' +
+      Charts.bars(weekday.map((d) => ({ label: d.key, value: d.amount })),
+        { currency: cur, height: 150, empty: "No settled bills in this period yet." }) + "</div></div>" +
+      "</div>" +
+
+      '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Every item sold</h3>' +
+      '<div class="spacer"></div><span class="small muted">' + plural(everyItem.length, "item") + " · sorted by takings</span></div>" +
+      (everyItem.length
+        ? '<div style="overflow-x:auto"><table class="grid"><thead><tr>' +
+          "<th>Item</th><th>Category</th><th class='num'>Sold</th><th class='num'>Per day</th>" +
+          "<th class='num'>Takings</th><th class='num'>Share</th><th>&nbsp;</th>" +
+          "</tr></thead><tbody>" +
+          everyItem.map((i) =>
+            "<tr><td><b>" + esc(i.key) + "</b></td>" +
+            '<td class="small muted">' + esc(i.category || "") + "</td>" +
+            '<td class="num">' + i.qty + "</td>" +
+            '<td class="num small muted">' + i.perDay + "</td>" +
+            '<td class="num"><b>' + fmt(i.amount) + "</b></td>" +
+            '<td class="num small">' + i.share + "%</td>" +
+            '<td style="width:130px"><div class="bar-track"><div class="bar-fill" style="width:' +
+            Math.max(2, (i.amount / (everyItem[0].amount || 1)) * 100) + '%"></div></div></td></tr>').join("") +
+          "</tbody></table></div>"
+        : '<div class="empty small">No settled bills in this period yet.</div>') +
+      "</div>" +
+
       '<div class="three-col">' +
       '<div class="card"><div class="card-head"><h3>Top sellers</h3></div><div class="card-pad">' +
       Charts.ranked(r.topItems.map((i) => ({ label: i.key, value: i.qty, hint: fmt(i.amount) })), { suffix: " nos" }) + "</div></div>" +

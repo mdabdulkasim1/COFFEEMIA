@@ -87,9 +87,16 @@ closed will not lose a running table.
 **Bills** — every bill for the day (all history for the admin), with reprint,
 and cancel-with-reason for the admin.
 
-**Dashboard** — net sales, bills, average bill, what is still running on the
-floor, sales by hour, payment split, top sellers, category split and staff-wise
-totals. Admins can pick any date range, export to CSV for Excel, and print the
+**Dashboard** — net sales, bills, average bill and what is still running on the
+floor, then:
+
+- **sales by day** across the range (or by hour, on a single day),
+- **busiest hours** across the whole period — which hours actually earn, so you
+  can staff to them rather than to a hunch,
+- **day of the week** — whether Sunday really is worth the extra hand,
+- **every item sold**, not just the top few: quantity, average per day, takings,
+  and each item's share of the money,
+- payment split, top sellers, category split and staff-wise totals. Admins can pick any date range, export to CSV for Excel, and print the
 **day close** summary at the end of the night.
 
 ## Changing the menu and the rates

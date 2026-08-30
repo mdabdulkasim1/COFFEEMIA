@@ -3,7 +3,12 @@
 (function (global) {
   "use strict";
 
-  const PALETTE = ["#c0562c", "#2d5f8a", "#2f7d4f", "#b8791b", "#7b4a8c", "#4b443c", "#0f766e", "#9c421d"];
+  /* Six categorical hues, terracotta first so the brand leads. Checked with a
+     palette validator: every step sits in the lightness band, clears the chroma
+     floor, holds 3:1 against the card, and keeps neighbouring pairs apart for
+     colour-blind readers. The old set failed three of those - do not add a
+     seventh by eye; anything beyond six folds into "Other". */
+  const PALETTE = ["#C0562C", "#3070C4", "#2E8B57", "#9B5DB8", "#A8801B", "#0F9B93"];
 
   function esc(s) {
     return String(s === null || s === undefined ? "" : s)
