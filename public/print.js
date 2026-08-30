@@ -55,6 +55,26 @@
     return s && s.printWidth === "58mm" ? "w58" : "";
   }
 
+  /** Scan-to-pay block: the shop's UPI ID with this bill's exact amount. */
+  function upiBlock(order, totals, s) {
+    if (!s.upiId || s.upiQrOnBill === false) return "";
+    if (order.payment && String(order.payment.mode || "").toLowerCase() === "cash") return "";
+    if (!global.UPI || !global.qrcode) return "";
+    const uri = global.UPI.buildUri({
+      upiId: s.upiId,
+      payeeName: s.upiName || s.cafeName,
+      amount: totals.total,
+      note: order.no ? "Bill " + order.no : "",
+    });
+    if (!uri) return "";
+    return (
+      '<div class="sep"></div><div class="c">' +
+      '<div class="b">Scan to pay ' + esc(s.currency || "") + amt(totals.total) + "</div>" +
+      global.UPI.svg(uri, { size: 150 }) +
+      '<div style="font-size:10px">' + esc(s.upiId) + "</div></div>"
+    );
+  }
+
   /* ---------------- Customer bill ---------------- */
   function bill(order, s, opts) {
     const o = order || {};
@@ -131,6 +151,7 @@
           (pay.change > 0 ? "<tr><td>Change</td><td class=\"r\">" + amt(pay.change) + "</td></tr>" : "") +
           "</table>"
         : "") +
+      upiBlock(o, t, s) +
       '<div class="sep"></div>' +
       '<div class="c">' + esc(t.itemCount || 0) + " item(s)" +
       (t.tax > 0 && t.taxMode === "inclusive" && s.gstNote

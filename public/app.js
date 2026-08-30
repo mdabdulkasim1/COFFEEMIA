@@ -1594,6 +1594,13 @@
         "</select></label>" +
         '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label></div>' +
         '<label class="field"><span>Footer line on the bill</span><input type="text" name="footerNote" value="' + esc(s.footerNote) + '"></label>' +
+        '<div class="row"><label class="field" style="margin:0"><span>UPI ID for scan-to-pay</span>' +
+        '<input type="text" name="upiId" id="upi-id" autocapitalize="none" spellcheck="false" ' +
+        'placeholder="coffeemia@hdfcbank" value="' + esc(s.upiId || "") + '"></label>' +
+        '<label class="field" style="margin:0"><span>Name the payer sees</span>' +
+        '<input type="text" name="upiName" value="' + esc(s.upiName || "") + '" placeholder="' + esc(s.cafeName || "") + '"></label></div>' +
+        '<div id="upi-hint" class="small muted" style="margin:4px 0 10px"></div>' +
+        '<label class="check"><input type="checkbox" name="upiQrOnBill"' + (s.upiQrOnBill !== false ? " checked" : "") + "><span>Print a scan-to-pay QR on the bill</span></label>" +
         '<div class="field"><span style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px">Logo printed on the bill</span>' +
         '<input type="hidden" name="logo" id="logo-data" value="' + esc(s.logo || "") + '">' +
         '<div class="logo-box" id="logo-box">' +
@@ -1640,6 +1647,38 @@
 
     const form = document.getElementById("settings-form");
     if (form) form.addEventListener("submit", (e) => { e.preventDefault(); saveSettings(form); });
+
+    const upiField = document.getElementById("upi-id");
+    if (upiField) {
+      const hint = document.getElementById("upi-hint");
+      const paint = () => {
+        const v = upiField.value.trim();
+        if (!v) {
+          hint.style.color = "";
+          hint.innerHTML = "Leave empty for no QR. A UPI ID looks like <b>name@bank</b> — never your account number.";
+          return;
+        }
+        if (!window.UPI.isValidUpiId(v)) {
+          hint.style.color = "var(--red)";
+          hint.textContent = "That is not a UPI ID. It should look like coffeemia@hdfcbank.";
+          return;
+        }
+        hint.style.color = "";
+        const demo = window.UPI.buildUri({
+          upiId: v,
+          payeeName: document.querySelector('[name="upiName"]').value.trim() || S.settings.cafeName,
+          amount: 120,
+          note: "Bill 1",
+        });
+        hint.innerHTML = '<div style="display:flex;gap:12px;align-items:center">' +
+          window.UPI.svg(demo, { size: 96 }) +
+          "<div>Valid. This is how a ₹120 bill would look — scan it with any UPI app to check " +
+          "the name and amount before going live.</div></div>";
+      };
+      upiField.addEventListener("input", paint);
+      document.querySelector('[name="upiName"]').addEventListener("input", paint);
+      paint();
+    }
 
     const logoFile = document.getElementById("logo-file");
     if (logoFile) {

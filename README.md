@@ -176,6 +176,29 @@ but it almost always means a typo, so compare the two before carrying on.
 The dashboard and the day-close report both show the taxable value alongside
 the GST collected, so the figures are ready for a return.
 
+## UPI scan-to-pay on the bill
+
+Put your **UPI ID** in Settings → Bill & printing (it looks like
+`coffeemia@hdfcbank`) and every bill prints a QR with that bill's exact amount
+already in it. The guest scans, their app opens showing your name and the
+amount, they pay. No typing the amount, so no wrong-amount mistakes.
+
+**Your account number is never used for this and should never be entered
+anywhere in the app.** A UPI ID is the public-facing identifier — that is the
+whole point of it. If you do not have a merchant one, your bank can issue it.
+
+The settings screen shows a live preview: enter your ID and you get a sample
+₹120 code to scan with your own phone, so you can check the name and amount
+before a customer ever sees one.
+
+What this does **not** do is tell the POS the money arrived. Your cashier still
+confirms from the soundbox or phone and then hits Settle, exactly as with cash.
+Automatic confirmation would need a payment gateway, a merchant account and a
+fee per transaction; for a counter this size, watching the soundbox is simpler.
+
+The QR is left off bills settled as Cash, and the whole thing can be switched
+off with *Print a scan-to-pay QR on the bill*.
+
 ## Guest mobile numbers
 
 The settle screen has an optional **Guest mobile** box. Type a number and the

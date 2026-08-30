@@ -305,6 +305,14 @@ async function handleApi(req, res, pathname, query) {
           return sendError(res, 400, "That image is too large — please use a smaller one.");
         } else s.logo = logo;
       }
+      if ("upiId" in body) {
+        const vpa = str(body.upiId, 80).trim();
+        if (vpa && !/^[a-zA-Z0-9._-]{2,64}@[a-zA-Z]{2,32}$/.test(vpa)) {
+          return sendError(res, 400, "That is not a UPI ID. It looks like name@bank — not an account number.");
+        }
+        s.upiId = vpa;
+      }
+      if ("upiName" in body) s.upiName = str(body.upiName, 60);
       if ("gstNote" in body) s.gstNote = str(body.gstNote, 200);
       let gstinCheck = gstin.validate(s.gstin);
       if ("gstin" in body) {
@@ -313,7 +321,7 @@ async function handleApi(req, res, pathname, query) {
         s.gstin = gstinCheck.value;
       }
       if ("taxMode" in body) s.taxMode = body.taxMode === "exclusive" ? "exclusive" : "inclusive";
-      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark"]) {
+      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill"]) {
         if (k in body) s[k] = !!body[k];
       }
       for (const k of ["taxPercent", "serviceChargePercent"]) {

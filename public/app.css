@@ -323,6 +323,7 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 .receipt.w58 .logo { max-height: 18mm; }
 /* A thermal head is monochrome: the cup must be solid black, never a colour it
    would have to dither into muddy grey. */
+.receipt .upi-qr { display: block; margin: 4px auto 2px; }
 .receipt .brand-cup { height: .8em; width: auto; margin-left: 2px; color: #000; }
 .receipt sup.tm { font-size: .5em; vertical-align: super; line-height: 0; margin-left: 1px; }
 /* Tamil needs a real Tamil face and a little more size than the mono body text. */
