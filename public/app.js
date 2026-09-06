@@ -1364,6 +1364,7 @@
       '<button class="btn" data-act="add-category">＋ New category</button>' +
       '<span style="flex:1"></span>' +
       '<span class="small muted">Change a rate in the box, then save.</span>' +
+      '<button class="btn" data-act="print-rates">🖨 Print rate list</button>' +
       '<button class="btn dark" data-act="save-rates">💾 Save rate changes</button>' +
       "</div>" +
       (sections || '<div class="card card-pad empty"><div class="big">📋</div>No categories yet — add one to start your menu.</div>');
@@ -1382,6 +1383,37 @@
     toast(out.updated + " rate" + (out.updated === 1 ? "" : "s") + " updated", "good");
     renderMenu();
   });
+
+  /* The whole priced menu on A4 — for the wall, a supplier, or "save as PDF".
+     Admin only, and it prints the SAVED rates: a rate typed into a box but not
+     yet saved would otherwise go to paper as if it were live. */
+  function printRateCard() {
+    if (!isAdmin()) return toast("Only the owner can print the rate list.", "bad");
+
+    const unsaved = [...document.querySelectorAll(".rate-input")].filter((input) => {
+      const item = S.items.find((i) => i.id === input.dataset.item);
+      const price = Number(input.value);
+      return item && isFinite(price) && price !== item.price;
+    }).length;
+    if (unsaved) {
+      return toast(unsaved + " rate change" + (unsaved === 1 ? "" : "s") +
+        " not saved yet — save first, then print.", "bad");
+    }
+
+    const categories = S.categories
+      .slice().sort((a, b) => a.sort - b.sort)
+      .map((c) => ({
+        name: c.name, localName: c.localName, station: c.station,
+        items: S.items
+          .filter((i) => i.categoryId === c.id && !i.archived)
+          .sort((a, b) => a.sort - b.sort)
+          .map((i) => ({ name: i.name, localName: i.localName, code: i.code, price: i.price, available: i.available })),
+      }))
+      .filter((c) => c.items.length);
+
+    if (!categories.length) return toast("Nothing on the menu to print yet.", "bad");
+    Print.rateCard({ categories, by: S.user && S.user.name }, S.settings);
+  }
 
   const itemForm = guard(async function (itemId, categoryId) {
     const item = itemId ? S.items.find((i) => i.id === itemId) : null;
@@ -2083,6 +2115,7 @@
       renderMenu();
     }),
     "save-rates": () => saveRates(),
+    "print-rates": () => printRateCard(),
     "add-category": () => categoryForm(null),
     "edit-category": (el) => categoryForm(el.dataset.cat),
     "delete-category": guard(async (el) => {

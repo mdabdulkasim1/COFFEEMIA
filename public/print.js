@@ -38,7 +38,25 @@
       "</div>"
     );
   }
+  /* A rate card wants A4; a bill wants the roll. @page cannot be scoped by a
+     selector, so the A4 rule is injected only while a sheet is on the page and
+     torn down again — belt and braces, since afterprint does not always fire. */
+  const PAGE_RULE_ID = "print-page-rule";
+  function clearPageRule() {
+    const el = document.getElementById(PAGE_RULE_ID);
+    if (el) el.remove();
+  }
+  function setPageRule(css) {
+    clearPageRule();
+    const el = document.createElement("style");
+    el.id = PAGE_RULE_ID;
+    el.textContent = css;
+    document.head.appendChild(el);
+    global.addEventListener("afterprint", clearPageRule, { once: true });
+  }
+
   function paint(html, widthClass) {
+    clearPageRule();
     let host = document.getElementById("print-area");
     if (!host) {
       // It lives outside #app in index.html; recreate it if a page ever lacks it.
@@ -268,5 +286,73 @@
     paint(html, widthClass(s));
   }
 
-  global.Print = { bill: bill, kot: kot, dayClose: dayClose };
+  /* ---------------- Menu & rate list (A4, admin) ---------------- */
+  /**
+   * The whole priced menu on plain paper — for the wall, the supplier, or the
+   * file. Prints what is SAVED, so an unsaved box in the editor never reaches
+   * the sheet; the caller checks for that before getting here.
+   */
+  function rateCard(card, s) {
+    const cur = s.currency || "";
+    const showLocal = s.showLocalNames !== false;
+    let shown = 0;
+    let off = 0;
+
+    const blocks = (card.categories || []).map(function (c) {
+      const rows = (c.items || []).map(function (i) {
+        shown++;
+        if (!i.available) off++;
+        const local = showLocal && i.localName
+          ? '<div class="ta sub">' + esc(i.localName) + "</div>" : "";
+        return (
+          '<tr' + (i.available ? "" : ' class="off"') + ">" +
+          "<td>" + esc(i.name) + (i.available ? "" : ' <span class="sub">(not on sale)</span>') + local + "</td>" +
+          '<td class="code">' + esc(i.code || "") + "</td>" +
+          '<td class="r">' + cur + amt(i.price) + "</td></tr>"
+        );
+      }).join("");
+      if (!rows) return "";
+      return (
+        '<section class="cat">' +
+        "<h2>" + esc(c.name) +
+        (showLocal && c.localName ? ' <span class="ta sub">' + esc(c.localName) + "</span>" : "") +
+        '<span class="station">' + esc(c.station || "Kitchen") + "</span></h2>" +
+        '<table><thead><tr><th>Item</th><th class="code">Code</th><th class="r">Rate</th></tr></thead>' +
+        "<tbody>" + rows + "</tbody></table></section>"
+      );
+    }).join("");
+
+    // Tax line: only when the shop is actually charging it.
+    let taxLine = "";
+    if (s.taxEnabled && s.taxPercent > 0) {
+      taxLine = s.taxMode === "inclusive"
+        ? "Rates shown are inclusive of " + esc(s.taxName || "GST") + " at " + s.taxPercent + "%."
+        : esc(s.taxName || "GST") + " at " + s.taxPercent + "% is charged on top of these rates.";
+    }
+
+    const html =
+      '<header>' + head(s, null) +
+      '<div class="c title">MENU &amp; RATE LIST</div>' +
+      '<div class="c sub">As on ' + when() + "</div></header>" +
+      "<main>" + (blocks || '<p class="c sub">No items on the menu yet.</p>') + "</main>" +
+      '<footer><div>' + shown + " item(s) in " + (card.categories || []).length + " categor" +
+      ((card.categories || []).length === 1 ? "y" : "ies") +
+      (off ? " · " + off + " not currently on sale" : "") + "</div>" +
+      (taxLine ? "<div>" + taxLine + "</div>" : "") +
+      "<div>" + esc(s.cafeName || "") + " · printed " + when() +
+      (card.by ? " by " + esc(card.by) : "") + "</div></footer>";
+
+    setPageRule("@page { size: A4 portrait; margin: 12mm; }");
+    let host = document.getElementById("print-area");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "print-area";
+      document.body.appendChild(host);
+    }
+    host.className = "";
+    host.innerHTML = '<div class="sheet">' + html + "</div>";
+    setTimeout(function () { global.print(); }, 60);
+  }
+
+  global.Print = { bill: bill, kot: kot, dayClose: dayClose, rateCard: rateCard };
 })(window);

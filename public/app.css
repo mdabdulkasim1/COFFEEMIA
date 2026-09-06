@@ -337,6 +337,45 @@ table.grid tbody tr:hover { background: #fdfaf5; }
 /* Tamil needs a real Tamil face and a little more size than the mono body text. */
 .receipt .ta { font-family: "Noto Sans Tamil", "Latha", "Nirmala UI", sans-serif; font-size: 12px; line-height: 1.5; }
 
+/* ---------------- A4 rate card (Menu & rates → Print) ---------------- */
+/* Plain black on white: this goes to an office printer or a PDF, not the roll. */
+.sheet {
+  width: 186mm; margin: 0 auto; color: #000; background: #fff;
+  font-family: var(--sans); font-size: 10.5pt; line-height: 1.32;
+}
+.sheet header { margin-bottom: 5mm; }
+.sheet .c { text-align: center; }
+.sheet h1 { font-size: 20pt; margin: 0 0 1px; letter-spacing: .5px; }
+.sheet .logo { max-width: 70mm; max-height: 26mm; object-fit: contain; margin: 0 auto 3px; display: block; }
+.sheet .brand-cup { height: .8em; width: auto; margin-left: 3px; color: #000; }
+.sheet sup.tm { font-size: .5em; vertical-align: super; line-height: 0; margin-left: 1px; }
+.sheet .sep { border-top: 1px solid #000; margin: 4mm 0 2mm; }
+.sheet .b { font-weight: 700; }
+.sheet .title { font-size: 12.5pt; font-weight: 700; letter-spacing: 2px; margin-top: 3mm; }
+.sheet .sub { font-size: 9pt; color: #444; font-weight: 400; }
+/* Two columns fit the whole card on one sheet; a category never splits across
+   the gap or the page break. */
+.sheet .cat { break-inside: avoid; page-break-inside: avoid; margin: 0 0 4.5mm; }
+.sheet h2 {
+  font-size: 11.5pt; margin: 0 0 1.5mm; padding-bottom: 1mm; border-bottom: 1.5px solid #000;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.sheet h2 .station { margin-left: auto; font-size: 8pt; font-weight: 400; text-transform: uppercase; letter-spacing: .5px; }
+.sheet table { width: 100%; border-collapse: collapse; }
+.sheet th { font-size: 8pt; text-transform: uppercase; letter-spacing: .5px; text-align: left; padding: 0 0 1mm; border-bottom: .5px solid #999; }
+.sheet td { padding: .8mm 0; vertical-align: top; border-bottom: .5px dotted #bbb; }
+.sheet .r { text-align: right; white-space: nowrap; }
+.sheet .code { width: 16mm; font-size: 9pt; color: #555; }
+.sheet tr.off td { color: #777; }
+.sheet .ta { font-family: "Noto Sans Tamil", "Latha", "Nirmala UI", sans-serif; }
+.sheet footer { margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #000; font-size: 8.5pt; color: #333; }
+@media print {
+  /* Only the printed sheet goes two-up; on screen the preview stays single. */
+  .sheet { width: auto; }
+  .sheet .cat { break-inside: avoid; }
+  .sheet main { column-count: 2; column-gap: 8mm; }
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 1080px) {
   .pos { grid-template-columns: 1fr 330px; }
