@@ -434,6 +434,7 @@
       lines: [],
       discountType: "amount",
       discountValue: 0,
+      parcelCharge: Number(S.settings.parcelChargeDefault) || 0,
       customerName: "",
       customerPhone: "",
       note: "",
@@ -453,6 +454,7 @@
       lines: o.lines.map((l) => Object.assign({}, l)),
       discountType: o.discountType,
       discountValue: o.discountValue,
+      parcelCharge: o.parcelCharge === undefined ? Number(S.settings.parcelChargeDefault) || 0 : o.parcelCharge,
       customerName: (o.customer || {}).name || "",
       customerPhone: (o.customer || {}).phone || "",
       note: o.note || "",
@@ -460,6 +462,21 @@
       createdAt: o.createdAt,
       createdByName: o.createdByName,
     };
+  }
+
+  const PARCEL_MODES = ["takeaway", "parcel"];
+  function parcelChargeMin() {
+    return Math.max(0, Number(S.settings.parcelChargeMin) || 0);
+  }
+  function parcelChargeApplies(cart) {
+    return S.settings.parcelChargeEnabled !== false && PARCEL_MODES.includes(cart.mode);
+  }
+  /* Same floor the server enforces: under the minimum snaps up, never down. */
+  function parcelChargeFor(cart) {
+    if (!parcelChargeApplies(cart)) return 0;
+    const min = parcelChargeMin();
+    const asked = Number(cart.parcelCharge);
+    return round2(isFinite(asked) && asked >= min ? asked : min);
   }
 
   /** Mirrors lib/pricing.js so the cart total updates without a round trip. */
@@ -472,25 +489,27 @@
     const afterDiscount = round2(subtotal - discount);
     const scPercent = s.serviceChargeEnabled ? Number(s.serviceChargePercent) || 0 : 0;
     const serviceCharge = round2((afterDiscount * scPercent) / 100);
+    const parcelCharge = parcelChargeFor(cart);
+    const extras = round2(serviceCharge + parcelCharge);
     const taxPercent = s.taxEnabled ? Number(s.taxPercent) || 0 : 0;
     const inclusive = s.taxMode !== "exclusive";
     const rounding = (n) => (s.roundOff === false ? round2(n) : Math.round(n));
 
     let tax, total, taxableValue, roundOff;
     if (!taxPercent) {
-      const gross = round2(afterDiscount + serviceCharge);
+      const gross = round2(afterDiscount + extras);
       total = round2(rounding(gross));
       tax = 0;
       taxableValue = total;
       roundOff = round2(total - gross);
     } else if (inclusive) {
-      const gross = round2(afterDiscount + serviceCharge);
+      const gross = round2(afterDiscount + extras);
       total = round2(rounding(gross));
       tax = round2(total - total / (1 + taxPercent / 100));
       taxableValue = round2(total - tax);
       roundOff = round2(total - gross);
     } else {
-      taxableValue = round2(afterDiscount + serviceCharge);
+      taxableValue = round2(afterDiscount + extras);
       tax = round2((taxableValue * taxPercent) / 100);
       const gross = round2(taxableValue + tax);
       total = round2(rounding(gross));
@@ -501,6 +520,7 @@
     return {
       subtotal, discount, discountType: cart.discountType, discountValue: value,
       serviceCharge, serviceChargePercent: scPercent,
+      parcelCharge, parcelChargeLabel: s.parcelChargeLabel || "Parcel charge",
       tax, taxPercent, taxName: s.taxName || "GST",
       taxMode: taxPercent ? (inclusive ? "inclusive" : "exclusive") : "none",
       taxableValue, cgst, sgst: round2(tax - cgst),
@@ -516,6 +536,7 @@
       lines: cart.lines.map((l) => ({ id: l.id, itemId: l.itemId, name: l.name, price: l.price, qty: l.qty, note: l.note })),
       discountType: cart.discountType,
       discountValue: cart.discountValue,
+      parcelCharge: cart.parcelCharge,
       customerName: cart.customerName,
       customerPhone: cart.customerPhone,
       note: cart.note,
@@ -713,6 +734,11 @@
       '<div class="tline"><span>Subtotal (' + plural(t.itemCount, "item") + ")</span><span>" + fmt(t.subtotal) + "</span></div>" +
       (t.discount > 0 ? '<div class="tline"><span>Discount' + (t.discountType === "percent" ? " " + t.discountValue + "%" : "") + '</span><span>−' + fmt(t.discount) + "</span></div>" : "") +
       (t.serviceCharge > 0 ? '<div class="tline"><span>Service ' + t.serviceChargePercent + '%</span><span>' + fmt(t.serviceCharge) + "</span></div>" : "") +
+      (parcelChargeApplies(cart)
+        ? '<div class="tline"><span>' + esc(t.parcelChargeLabel) +
+          ' <button class="btn sm ghost" data-act="parcel-charge" title="Change the parcel charge">✎</button></span><span>' +
+          fmt(t.parcelCharge) + "</span></div>"
+        : "") +
       (t.tax > 0 && t.taxMode === "exclusive"
         ? '<div class="tline"><span>' + esc(t.taxName) + " " + t.taxPercent + '%</span><span>' + fmt(t.tax) + "</span></div>"
         : "") +
@@ -931,6 +957,33 @@
     paintCart();
   });
 
+  const setParcelCharge = guard(async function () {
+    const cart = S.cart;
+    if (!parcelChargeApplies(cart)) return;
+    const min = parcelChargeMin();
+    const cur = S.settings.currency || "";
+    const result = await modal({
+      title: S.settings.parcelChargeLabel || "Parcel charge",
+      okText: "Apply",
+      body:
+        '<label class="field"><span>Charge for this bill</span>' +
+        '<input type="number" name="amount" min="' + min + '" step="1" value="' + parcelChargeFor(cart) + '"></label>' +
+        '<p class="small muted" style="margin:0">Minimum ' + esc(cur) + min +
+        '. Raise it for a big order — there is no upper limit.</p>',
+      validate: (f) => {
+        const n = Number(f.amount);
+        if (!isFinite(n)) return "Enter an amount.";
+        if (n < min) return "The parcel charge cannot be less than " + cur + min + ".";
+        return null;
+      },
+    });
+    if (!result) return;
+    cart.parcelCharge = Math.max(min, Number(result.amount) || 0);
+    paintCart();
+    await flushSave();
+    paintCart();
+  });
+
   const lineNote = guard(async function (idx) {
     const line = S.cart.lines[idx];
     if (!line) return;
@@ -1036,6 +1089,11 @@
     if (mode !== "dine-in") {
       cart.tableId = null;
       cart.tableName = mode === "parcel" ? "Parcel" : "Takeaway";
+      // Coming back to a bag order re-arms the shop default rather than leaving
+      // a stale zero from a spell as dine-in.
+      if (!(Number(cart.parcelCharge) >= parcelChargeMin())) {
+        cart.parcelCharge = Math.max(parcelChargeMin(), Number(S.settings.parcelChargeDefault) || 0);
+      }
     }
     paintCart();
     await flushSave();
@@ -1716,6 +1774,14 @@
         '<p class="small muted" style="margin:0 0 6px">With inclusive rates nothing is added at the bottom of the bill — the GST already inside the total is printed as a breakup, followed by this note.</p>' +
         "</div></div>" +
 
+        '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Parcel charge</h3></div><div class="card-pad">' +
+        '<label class="check"><input type="checkbox" name="parcelChargeEnabled"' + (s.parcelChargeEnabled !== false ? " checked" : "") + "><span>Charge for packing on takeaway and parcel bills</span></label>" +
+        '<div class="row"><label class="field"><span>Minimum</span><input type="number" name="parcelChargeMin" min="0" step="1" value="' + (s.parcelChargeMin || 0) + '"></label>' +
+        '<label class="field"><span>Starts at</span><input type="number" name="parcelChargeDefault" min="0" step="1" value="' + (s.parcelChargeDefault || 0) + '"></label>' +
+        '<label class="field"><span>Name on the bill</span><input type="text" name="parcelChargeLabel" maxlength="30" value="' + esc(s.parcelChargeLabel || "Parcel charge") + '"></label></div>' +
+        '<p class="small muted" style="margin:0 0 6px">Every takeaway and parcel bill opens at the starting amount. The counter can raise it for a big order but can never save less than the minimum — dine-in bills are never charged.</p>' +
+        "</div></div>" +
+
         '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Service charge</h3></div><div class="card-pad">' +
         '<label class="check"><input type="checkbox" name="serviceChargeEnabled"' + (s.serviceChargeEnabled ? " checked" : "") + "><span>Add a service charge</span></label>" +
         '<label class="field" style="max-width:220px"><span>Service charge %</span><input type="number" name="serviceChargePercent" min="0" max="100" step="0.5" value="' + s.serviceChargePercent + '"></label>' +
@@ -1970,6 +2036,8 @@
     body.paymentModes = String(body.paymentModes || "").split(",").map((x) => x.trim()).filter(Boolean);
     body.taxPercent = Number(body.taxPercent) || 0;
     body.serviceChargePercent = Number(body.serviceChargePercent) || 0;
+    body.parcelChargeMin = Number(body.parcelChargeMin) || 0;
+    body.parcelChargeDefault = Number(body.parcelChargeDefault) || 0;
     const out = await api("/settings", { method: "PUT", body });
     S.settings = out.settings;
     S.gstinInfo = out.gstinInfo || null;
@@ -2068,6 +2136,7 @@
     settle: () => settle(),
     hold: () => holdOrder(),
     discount: () => setDiscount(),
+    "parcel-charge": () => setParcelCharge(),
 
     /* dashboard + bills */
     "dash-preset": (el) => {

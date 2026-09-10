@@ -137,6 +137,7 @@
     if (t.discount > 0) {
       add("Discount" + (t.discountType === "percent" ? " (" + t.discountValue + "%)" : ""), "-" + amt(t.discount));
     }
+    if (t.parcelCharge > 0) add(t.parcelChargeLabel || "Parcel charge", amt(t.parcelCharge));
     if (t.serviceCharge > 0) add("Service charge (" + t.serviceChargePercent + "%)", amt(t.serviceCharge));
     // Exclusive GST is added on at the bottom; inclusive GST is already in the
     // rates and is shown as a breakup underneath the total instead.
@@ -261,6 +262,7 @@
       "<tr><td>Items sold</td><td class=\"r\">" + t.itemsSold + "</td></tr>" +
       "<tr><td>Average bill</td><td class=\"r\">" + amt(t.average) + "</td></tr>" +
       "<tr><td>Discounts</td><td class=\"r\">" + amt(t.discount) + "</td></tr>" +
+      (t.parcelCharge ? "<tr><td>Parcel charges</td><td class=\"r\">" + amt(t.parcelCharge) + "</td></tr>" : "") +
       (t.tax
         ? "<tr><td>Taxable value</td><td class=\"r\">" + amt(t.taxableValue) + "</td></tr>" +
           "<tr><td>" + esc(s.taxName || "GST") + " collected</td><td class=\"r\">" + amt(t.tax) + "</td></tr>"

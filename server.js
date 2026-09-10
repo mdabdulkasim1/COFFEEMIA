@@ -334,12 +334,18 @@ async function handleApi(req, res, pathname, query) {
         s.gstin = gstinCheck.value;
       }
       if ("taxMode" in body) s.taxMode = body.taxMode === "exclusive" ? "exclusive" : "inclusive";
-      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill"]) {
+      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill", "parcelChargeEnabled"]) {
         if (k in body) s[k] = !!body[k];
       }
       for (const k of ["taxPercent", "serviceChargePercent"]) {
         if (k in body) s[k] = Math.min(Math.max(num(body[k], 0), 0), 100);
       }
+      for (const k of ["parcelChargeMin", "parcelChargeDefault"]) {
+        if (k in body) s[k] = Math.min(Math.max(num(body[k], 0), 0), 9999);
+      }
+      // A default under the floor would hand the counter a value it cannot save.
+      if (s.parcelChargeDefault < s.parcelChargeMin) s.parcelChargeDefault = s.parcelChargeMin;
+      if ("parcelChargeLabel" in body) s.parcelChargeLabel = str(body.parcelChargeLabel, 30) || "Parcel charge";
       if (Array.isArray(body.paymentModes)) {
         const modes = body.paymentModes.map((m) => str(m, 20)).filter(Boolean).slice(0, 8);
         if (modes.length) s.paymentModes = modes;
@@ -627,6 +633,7 @@ async function handleApi(req, res, pathname, query) {
         lines: normaliseLines(data, body.lines, []),
         discountType: body.discountType === "percent" ? "percent" : "amount",
         discountValue: Math.max(0, num(body.discountValue, 0)),
+        parcelCharge: Math.max(0, num(body.parcelCharge, data.settings.parcelChargeDefault)),
         customer: { name: str(body.customerName, 60), phone: normalisePhone(body.customerPhone) },
         note: str(body.note, 200),
         kotCount: 0,
@@ -754,6 +761,7 @@ async function handleApi(req, res, pathname, query) {
       if ("discountType" in body) order.discountType = body.discountType === "percent" ? "percent" : "amount";
       if ("discountValue" in body) order.discountValue = Math.max(0, num(body.discountValue, 0));
       if ("mode" in body && ["dine-in", "takeaway", "parcel"].includes(body.mode)) order.mode = body.mode;
+      if ("parcelCharge" in body) order.parcelCharge = Math.max(0, num(body.parcelCharge, 0));
       if ("tableId" in body) {
         const target = body.tableId ? data.tables.find((t) => t.id === body.tableId) : null;
         if (body.tableId && !target) return sendError(res, 400, "Table not found.");
