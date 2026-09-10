@@ -137,6 +137,8 @@
     if (t.discount > 0) {
       add("Discount" + (t.discountType === "percent" ? " (" + t.discountValue + "%)" : ""), "-" + amt(t.discount));
     }
+    // Only bills settled while the automatic parcel charge existed carry this;
+    // it is kept so an old bill still reprints with a breakup that adds up.
     if (t.parcelCharge > 0) add(t.parcelChargeLabel || "Parcel charge", amt(t.parcelCharge));
     if (t.serviceCharge > 0) add("Service charge (" + t.serviceChargePercent + "%)", amt(t.serviceCharge));
     // Exclusive GST is added on at the bottom; inclusive GST is already in the
