@@ -1699,7 +1699,8 @@
         '<span class="small muted" id="logo-hint">A plain black-and-white image prints best.</span>' +
         "</div></div>" +
         '<label class="check"><input type="checkbox" name="trademark"' + (s.trademark !== false ? " checked" : "") + "><span>Show ™ after the cafe name</span></label>" +
-        '<label class="check"><input type="checkbox" name="showLocalNames"' + (s.showLocalNames ? " checked" : "") + "><span>Show Tamil names on screen and on the bill</span></label>" +
+        '<label class="check"><input type="checkbox" name="showLocalNames"' + (s.showLocalNames ? " checked" : "") + "><span>Show Tamil names on the counter screen</span></label>" +
+        '<label class="check"><input type="checkbox" name="printLocalNames"' + (s.printLocalNames ? " checked" : "") + "><span>Print Tamil names on bills, kitchen tickets and the rate list</span></label>" +
         '<label class="check"><input type="checkbox" name="roundOff"' + (s.roundOff ? " checked" : "") + "><span>Round the total to the nearest rupee</span></label>" +
         "</div></div>" +
 

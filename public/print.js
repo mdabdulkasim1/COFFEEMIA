@@ -30,7 +30,7 @@
     return (
       '<div class="c">' +
       mark +
-      (s.cafeNameLocal ? '<div class="b ta" style="font-size:14px">' + esc(s.cafeNameLocal) + "</div>" : "") +
+      (s.printLocalNames && s.cafeNameLocal ? '<div class="b ta" style="font-size:14px">' + esc(s.cafeNameLocal) + "</div>" : "") +
       (s.address ? "<div>" + esc(s.address) + "</div>" : "") +
       (s.phone ? "<div>Ph: " + esc(s.phone) + "</div>" : "") +
       (s.gstin ? "<div>GSTIN: " + esc(s.gstin) + "</div>" : "") +
@@ -117,7 +117,7 @@
     const cur = s.currency || "";
     const rows = (o.lines || [])
       .map(function (l, i) {
-        const local = s.showLocalNames && l.localName ? '<div class="ta">' + esc(l.localName) + "</div>" : "";
+        const local = s.printLocalNames && l.localName ? '<div class="ta">' + esc(l.localName) + "</div>" : "";
         const note = l.note ? '<div style="font-size:10px">* ' + esc(l.note) + "</div>" : "";
         return (
           "<tr><td>" + (i + 1) + ".</td>" +
@@ -217,7 +217,7 @@
             .map(function (l) {
               return (
                 '<div class="kot-item">' + l.qty + " x " + esc(l.name) +
-                (s.showLocalNames && l.localName ? ' <span class="ta">' + esc(l.localName) + "</span>" : "") +
+                (s.printLocalNames && l.localName ? ' <span class="ta">' + esc(l.localName) + "</span>" : "") +
                 (l.note ? '<div style="font-size:11px;font-weight:400">* ' + esc(l.note) + "</div>" : "") +
                 "</div>"
               );
@@ -298,7 +298,7 @@
    */
   function rateCard(card, s) {
     const cur = s.currency || "";
-    const showLocal = s.showLocalNames !== false;
+    const showLocal = s.printLocalNames === true;
     let shown = 0;
     let off = 0;
 

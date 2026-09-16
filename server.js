@@ -334,7 +334,7 @@ async function handleApi(req, res, pathname, query) {
         s.gstin = gstinCheck.value;
       }
       if ("taxMode" in body) s.taxMode = body.taxMode === "exclusive" ? "exclusive" : "inclusive";
-      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill"]) {
+      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill"]) {
         if (k in body) s[k] = !!body[k];
       }
       for (const k of ["taxPercent", "serviceChargePercent"]) {
