@@ -245,6 +245,9 @@
     const data = await api("/bootstrap");
     S.user = data.user;
     S.settings = data.settings;
+    if (localStorage.getItem("coffeemia_print_method")) {
+      S.settings.printMethod = localStorage.getItem("coffeemia_print_method");
+    }
     S.gstinInfo = data.gstinInfo || null;
     S.categories = data.categories.filter((c) => c.active !== false);
     S.items = data.items;
@@ -1089,7 +1092,8 @@
         '<label class="field"><span>To</span><input type="date" id="dash-to" value="' + v.dashTo + '"></label>' +
         '<button class="btn primary" data-act="dash-apply">Show</button>' +
         '<span style="flex:1"></span>' +
-        '<button class="btn" data-act="day-close">🧾 Day close</button>' +
+        '<button class="btn" data-act="view-day-close" title="View Day Close Report">👁️ View Day close</button>' +
+        '<button class="btn" data-act="day-close" title="Print Day Close Report">🧾 Day close</button>' +
         '<button class="btn" data-act="export-csv">⬇ Excel / CSV</button>' +
         "</div>"
       : '<div class="filters"><span class="pill muted">Today · ' + esc(v.dashFrom) + "</span>" +
@@ -1652,11 +1656,39 @@
         "</div></div>" +
 
         '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Bill &amp; printing</h3></div><div class="card-pad">' +
-        '<div class="row"><label class="field"><span>Printer roll width</span><select name="printWidth">' +
+        '<div class="row"><label class="field"><span>Printer connection method</span><select name="printMethod" id="print-method">' +
+        '<option value="browser"' + (s.printMethod === "browser" || !s.printMethod ? " selected" : "") + ">🖥️ Browser Driver (USB Cable / Windows Installed Printer)</option>" +
+        '<option value="network"' + (s.printMethod === "network" ? " selected" : "") + ">📶 Wi-Fi / Network IP Thermal Printer (Direct TCP 9100)</option>" +
+        '<option value="bluetooth"' + (s.printMethod === "bluetooth" ? " selected" : "") + ">🔵 Direct Bluetooth Thermal Printer</option>" +
+        '<option value="serial"' + (s.printMethod === "serial" ? " selected" : "") + ">🔌 Direct USB Serial Printer</option>" +
+        "</select></label>" +
+        '<label class="field"><span>Printer roll width</span><select name="printWidth">' +
         '<option value="80mm"' + (s.printWidth === "80mm" ? " selected" : "") + ">80 mm (standard thermal)</option>" +
         '<option value="58mm"' + (s.printWidth === "58mm" ? " selected" : "") + ">58 mm (small thermal)</option>" +
-        "</select></label>" +
-        '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label></div>' +
+        "</select></label></div>" +
+        '<label class="check" style="margin-bottom:12px"><input type="checkbox" name="showPrintPreview"' + (s.showPrintPreview !== false ? " checked" : "") + "><span>Show browser print preview dialog (window.print)</span></label>" +
+
+        '<div id="print-network-pane" style="display:none;margin-bottom:12px">' +
+        '<div class="row"><label class="field" style="flex:2"><span>Printer IP Address</span><input type="text" name="printerIp" placeholder="192.168.1.200" value="' + esc(s.printerIp || "") + '"></label>' +
+        '<label class="field" style="flex:1"><span>Port</span><input type="number" name="printerPort" value="' + (s.printerPort || 9100) + '" placeholder="9100"></label></div>' +
+        '<button type="button" class="btn sm" data-act="test-network-print">📶 Test Network Print</button>' +
+        "</div>" +
+
+        '<div id="print-bluetooth-pane" style="display:none;margin-bottom:12px">' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<button type="button" class="btn sm primary" data-act="pair-bluetooth">🔵 Pair Bluetooth Printer</button>' +
+        '<button type="button" class="btn sm" data-act="test-bluetooth-print">Test Bluetooth Print</button></div>' +
+        '<p class="small muted" style="margin:4px 0 0">Click Pair to connect to your Bluetooth thermal printer from your device.</p>' +
+        "</div>" +
+
+        '<div id="print-serial-pane" style="display:none;margin-bottom:12px">' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<button type="button" class="btn sm primary" data-act="pair-serial">🔌 Pair USB Printer (Silent Direct)</button>' +
+        '<button type="button" class="btn sm" data-act="test-serial-print">Test USB Serial Print</button></div>' +
+        '<p class="small muted" style="margin:4px 0 0">Pair once to print directly to your USB thermal printer without any print preview window.</p>' +
+        "</div>" +
+
+        '<label class="field"><span>Payment modes (comma separated)</span><input type="text" name="paymentModes" value="' + esc((s.paymentModes || []).join(", ")) + '"></label>' +
         '<label class="field"><span>Footer line on the bill</span><input type="text" name="footerNote" value="' + esc(s.footerNote) + '"></label>' +
         '<label class="field"><span>Payment QR on the bill</span><select name="qrSource" id="qr-source">' +
         '<option value="none"' + (s.qrSource === "none" || !s.qrSource ? " selected" : "") + ">Don't print one</option>" +
@@ -1734,6 +1766,21 @@
 
     const form = document.getElementById("settings-form");
     if (form) form.addEventListener("submit", (e) => { e.preventDefault(); saveSettings(form); });
+
+    const pm = document.getElementById("print-method");
+    if (pm) {
+      const syncPm = () => {
+        const v = pm.value;
+        const netPane = document.getElementById("print-network-pane");
+        const btPane = document.getElementById("print-bluetooth-pane");
+        const serPane = document.getElementById("print-serial-pane");
+        if (netPane) netPane.style.display = v === "network" ? "" : "none";
+        if (btPane) btPane.style.display = v === "bluetooth" ? "" : "none";
+        if (serPane) serPane.style.display = v === "serial" ? "" : "none";
+      };
+      pm.addEventListener("change", syncPm);
+      syncPm();
+    }
 
     const source = document.getElementById("qr-source");
     if (source) {
@@ -1968,8 +2015,9 @@
       body[f.name] = f.type === "checkbox" ? f.checked : f.value;
     });
     body.paymentModes = String(body.paymentModes || "").split(",").map((x) => x.trim()).filter(Boolean);
-    body.taxPercent = Number(body.taxPercent) || 0;
-    body.serviceChargePercent = Number(body.serviceChargePercent) || 0;
+    if (body.printMethod) {
+      localStorage.setItem("coffeemia_print_method", body.printMethod);
+    }
     const out = await api("/settings", { method: "PUT", body });
     S.settings = out.settings;
     S.gstinInfo = out.gstinInfo || null;
@@ -2003,10 +2051,99 @@
   /* ================================================================== */
   /* Reports: day close + export                                        */
   /* ================================================================== */
-  const dayClose = guard(async function () {
-    const date = S.view.dashFrom || todayStr();
-    const out = await api("/dayclose?date=" + date);
-    Print.dayClose(out.report, out.settings, date);
+  function getDashSelectedRange() {
+    const fromEl = document.getElementById("dash-from");
+    const toEl = document.getElementById("dash-to");
+    if (fromEl && fromEl.value) S.view.dashFrom = fromEl.value;
+    if (toEl && toEl.value) S.view.dashTo = toEl.value;
+    const from = S.view.dashFrom || todayStr();
+    const to = S.view.dashTo || from;
+    return { from, to };
+  }
+
+  const dayClose = guard(async function (customFrom, customTo) {
+    let from, to;
+    if (customFrom) {
+      from = customFrom;
+      to = customTo || customFrom;
+    } else {
+      const range = getDashSelectedRange();
+      from = range.from;
+      to = range.to;
+    }
+    const out = await api("/dayclose?from=" + from + "&to=" + to);
+    const label = from === to ? from : from + " → " + to;
+    Print.dayClose(out.report, out.settings, label);
+  });
+
+  const viewDayClose = guard(async function (customFrom, customTo) {
+    let from, to;
+    if (customFrom) {
+      from = customFrom;
+      to = customTo || customFrom;
+    } else {
+      const range = getDashSelectedRange();
+      from = range.from;
+      to = range.to;
+    }
+    const out = await api("/dayclose?from=" + from + "&to=" + to);
+    const r = out.report;
+    const t = (r && r.totals) || {};
+    const label = from === to ? from : from + " → " + to;
+
+    const blockRows = (title, rows, valKey) => {
+      if (!rows || !rows.length) return "";
+      return (
+        '<div style="margin-top:14px; font-weight:600; font-size:14px; color:var(--fg); border-bottom:1px solid var(--border); padding-bottom:6px;">' + esc(title) + '</div>' +
+        '<table class="grid" style="margin-top:6px; width:100%;">' +
+        rows.map(row => 
+          '<tr><td>' + esc(row.key) + (row.qty ? ' <span class="muted">(' + row.qty + ')</span>' : '') + 
+          '</td><td class="num"><b>' + fmt(row[valKey || "amount"]) + '</b></td></tr>'
+        ).join("") +
+        '</table>'
+      );
+    };
+
+    const modalContent =
+      '<div style="max-height:68vh; overflow-y:auto; padding-right:4px;">' +
+      '<div style="text-align:center; margin-bottom:16px; padding:12px; background:var(--surface-subtle); border-radius:8px; border:1px solid var(--border);">' +
+        '<h2 style="margin:0 0 4px 0; font-size:18px;">Day Close Summary (Z-Report)</h2>' +
+        '<div class="muted small" style="margin-bottom:8px;">' + esc(S.settings.cafeName || "Coffeemia") + '</div>' +
+        '<div style="display:inline-flex; align-items:center; gap:8px; background:var(--bg); padding:6px 14px; border-radius:6px; border:1px solid var(--border); font-size:13px; font-weight:600; color:var(--fg);">' +
+          '<span>Period: ' + esc(label) + '</span>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="kpis" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:16px;">' +
+        '<div class="kpi brand"><div class="lbl">Net Sales</div><div class="val">' + fmt(t.gross) + '</div></div>' +
+        '<div class="kpi"><div class="lbl">Bills</div><div class="val">' + (t.orders || 0) + '</div><div class="sub">' + (r.firstBill ? "#" + r.firstBill + " - #" + r.lastBill : "No bills") + '</div></div>' +
+        '<div class="kpi"><div class="lbl">Average Bill</div><div class="val">' + fmt(t.average) + '</div><div class="sub">' + (t.itemsSold || 0) + ' items sold</div></div>' +
+        '<div class="kpi"><div class="lbl">Discounts</div><div class="val">' + fmt(t.discount) + '</div><div class="sub">' + (t.cancelledCount || 0) + ' cancelled</div></div>' +
+        (t.tax ? '<div class="kpi"><div class="lbl">' + esc(S.settings.taxName || "GST") + '</div><div class="val">' + fmt(t.tax) + '</div><div class="sub">Taxable: ' + fmt(t.taxableValue) + '</div></div>' : "") +
+      '</div>' +
+
+      blockRows("Payments Breakdown", r.byPayment) +
+      blockRows("Order Type Breakdown", r.byMode) +
+      blockRows("Counter Staff Sales", r.byStaff) +
+      blockRows("Category Breakdown", r.byCategory) +
+      blockRows("Top Items Sold", r.topItems) +
+      (r.voids && r.voids.length
+        ? '<div style="margin-top:14px; font-weight:600; font-size:14px; color:var(--fg); border-bottom:1px solid var(--border); padding-bottom:6px;">Voids after KOT</div>' +
+          '<ul style="margin:8px 0 0 16px; padding:0; font-size:13px;" class="muted">' +
+          r.voids.map(v => '<li><b>' + esc(v.table || 'Counter') + '</b>: ' + v.qty + 'x ' + esc(v.name) + ' (by ' + esc(v.by) + ')</li>').join('') +
+          '</ul>'
+        : '') +
+      '</div>';
+
+    await modal({
+      title: "👁️ View Day Close — " + label,
+      body: modalContent,
+      confirmText: "🧾 Print Day Close",
+      cancelText: "Close",
+      onConfirm: async () => {
+        Print.dayClose(r, out.settings, label);
+      }
+    });
   });
 
   function exportCsv() {
@@ -2094,6 +2231,7 @@
       const out = await api("/orders/" + el.dataset.order);
       Print.bill(out.order, S.settings, { reprint: true });
     }),
+    "view-day-close": () => viewDayClose(),
     "day-close": () => dayClose(),
     "guests-search": () => {
       const box = document.getElementById("guest-q");
@@ -2169,6 +2307,39 @@
       document.getElementById("logo-box").innerHTML =
         '<span class="muted small">No logo — the cafe name is printed instead.</span>';
       document.getElementById("logo-hint").textContent = "Press Save settings to remove it.";
+    },
+    "pair-bluetooth": () => {
+      Print.pairBluetooth().then((dev) => {
+        localStorage.setItem("coffeemia_print_method", "bluetooth");
+        S.settings.printMethod = "bluetooth";
+        const pm = document.getElementById("print-method");
+        if (pm) {
+          pm.value = "bluetooth";
+          pm.dispatchEvent(new Event("change"));
+        }
+      }).catch(() => {});
+    },
+    "pair-serial": () => {
+      Print.pairSerial().then((port) => {
+        localStorage.setItem("coffeemia_print_method", "serial");
+        S.settings.printMethod = "serial";
+        const pm = document.getElementById("print-method");
+        if (pm) {
+          pm.value = "serial";
+          pm.dispatchEvent(new Event("change"));
+        }
+      }).catch(() => {});
+    },
+    "test-network-print": () => {
+      const ip = document.querySelector('[name="printerIp"]')?.value || S.settings.printerIp;
+      const port = document.querySelector('[name="printerPort"]')?.value || S.settings.printerPort;
+      Print.testPrint(Object.assign({}, S.settings, { printMethod: "network", printerIp: ip, printerPort: port }));
+    },
+    "test-bluetooth-print": () => {
+      Print.testPrint(Object.assign({}, S.settings, { printMethod: "bluetooth" }));
+    },
+    "test-serial-print": () => {
+      Print.testPrint(Object.assign({}, S.settings, { printMethod: "serial" }));
     },
   };
 

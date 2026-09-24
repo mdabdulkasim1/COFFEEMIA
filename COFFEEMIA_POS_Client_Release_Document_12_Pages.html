@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffeemia POS v2.0.0 — 12-Page Client Technical & Release Document</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+    :root {
+      --primary: #5c3b1e;
+      --primary-dark: #3b2310;
+      --accent: #d97706;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --code-bg: #1e1e2e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background-color: #cbd5e1;
+      line-height: 1.5;
+      font-size: 13.5px;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm;
+      margin: 10mm auto;
+      background: var(--card-bg);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      position: relative;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .page-content { flex: 1; }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+
+    .header-bar .logo { font-size: 18px; font-weight: 800; color: var(--primary); }
+    .header-bar .doc-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent); letter-spacing: 0.5px; }
+
+    .footer-bar {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    h1 { font-size: 24px; color: var(--primary-dark); margin-bottom: 12px; font-weight: 800; }
+    h2 { font-size: 17px; color: var(--primary); margin: 16px 0 10px 0; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    h3 { font-size: 14px; color: var(--text); margin: 12px 0 6px 0; font-weight: 600; }
+    p { margin-bottom: 10px; text-align: justify; }
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11.5px; }
+    th, td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; }
+    th { background: #f1f5f9; color: var(--primary-dark); font-weight: 700; }
+    tr:nth-child(even) { background: #f8fafc; }
+
+    pre { background: var(--code-bg); color: #cdd6f4; padding: 12px; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 11px; overflow-x: auto; margin: 10px 0; white-space: pre-wrap; word-break: break-all; }
+    code { font-family: 'Fira Code', monospace; background: #e2e8f0; color: #0f172a; padding: 2px 5px; border-radius: 4px; font-size: 11.5px; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: #fef3c7; color: #92400e; }
+
+    .callout { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 12px; color: #1e40af; }
+    .callout-success { background: #f0fdf4; border-left-color: #22c55e; color: #15803d; }
+    .callout-warning { background: #fffbeb; border-left-color: #f59e0b; color: #b45309; }
+
+    .cover-title { font-size: 28px; color: var(--primary-dark); font-weight: 800; margin-top: 40px; margin-bottom: 10px; line-height: 1.2; }
+    .cover-subtitle { font-size: 15px; color: var(--accent); font-weight: 600; margin-bottom: 30px; }
+
+    .meta-table { margin-top: 40px; }
+    .meta-table td { padding: 10px; font-size: 12.5px; }
+
+    @media print {
+      body { background: white; font-size: 11.5px; }
+      .page { box-shadow: none; margin: 0; width: 100%; height: 297mm; padding: 15mm; page-break-after: always; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: COVER & EXECUTIVE SUMMARY -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Release Documentation v2.0.0</div>
+      </div>
+      <span class="badge">Official Client Document</span>
+      <div class="cover-title">System Architecture Upgrade, Direct Thermal Hardware Printing & Deployment Manual</div>
+      <div class="cover-subtitle">Complete Audit of Untracked & Modified Release Components</div>
+      <p>This document presents the formal technical and operational documentation for <strong>Coffeemia Cafe POS & Billing Application v2.0.0</strong>. It details all architectural changes, direct hardware integration, MySQL database persistence, API endpoints, and production deployment instructions.</p>
+      
+      <table class="meta-table">
+        <tr><th>Target Client Organization</th><td>Coffeemia Cafe (Palayamkottai, Tamil Nadu)</td></tr>
+        <tr><th>Release Version</th><td>v2.0.0 (Production Release)</td></tr>
+        <tr><th>Document Date</th><td>September 24, 2026</td></tr>
+        <tr><th>Primary System Upgrades</th><td>Direct ESC/POS Thermal Printing, MySQL Connection Pooling, Local JSON Fallback, PM2 + cPanel Deployment</td></tr>
+        <tr><th>Target Audience</th><td>Cafe Owner, Operational Managers, Lead Cashiers, Systems Administrators</td></tr>
+      </table>
+
+      <div class="callout callout-success" style="margin-top: 30px;">
+        <strong>Release Status:</strong> All core modifications and untracked deployment files have been fully integrated, verified, and documented for zero-downtime client handoff.
+      </div>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 1 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 2: SYSTEM ARCHITECTURE & HARDWARE MATRIX -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 2 — System Architecture</div>
+      </div>
+      <h2>2. System Architecture & Hardware Compatibility Matrix</h2>
+      <p>Coffeemia POS is designed as a zero-dependency, high-speed single page application (SPA) backed by a Node.js runtime controller. It manages front-end order construction, back-end relational storage, and direct network/hardware thermal printing.</p>
+
+      <pre>
++-----------------------------------------------------------------------------------+
+|                            COFFEEMIA POS APP ARCHITECTURE                         |
++-----------------------------------------------------------------------------------+
+|  FRONT-END INTERFACE: Single Page App (HTML5 / Vanilla CSS3 / JavaScript ES6)     |
+|  - Table Grid View | Order Builder | Settings Modal | Hardware Test Controller    |
++-----------------------------------------------------------------------------------+
+                                        | (HTTP / REST APIs & Web APIs)
+                                        v
++-----------------------------------------------------------------------------------+
+|  BACK-END ENGINE: Node.js HTTP Server (server.js)                                 |
+|  - JWT Auth | HTTP Routing | Net Socket Handler | MySQL Abstraction Layer        |
++-----------------------------------------------------------------------------------+
+      |                                   |                                  |
+      v                                   v                                  v
+[Network Printer Socket]       [MySQL Database Pool]              [Local JSON Fallback]
+(Raw TCP Port 9100)            (mysql2 / Port 3306)              (data/pos.json)
+      </pre>
+
+      <h3>2.1 Hardware Compatibility Matrix</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Subsystem</th>
+            <th>Interface Protocol</th>
+            <th>Minimum Spec</th>
+            <th>Recommended Client Setup</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Billing Terminals</td>
+            <td>Web Browser</td>
+            <td>Chrome 90+, Edge 90+</td>
+            <td>Chrome on Windows 11 / Android Tablet</td>
+          </tr>
+          <tr>
+            <td>Network Printers</td>
+            <td>Wi-Fi / Ethernet IP</td>
+            <td>Raw TCP Port 9100</td>
+            <td>80mm LAN Thermal Printer (Epson / TVS)</td>
+          </tr>
+          <tr>
+            <td>Mobile Printers</td>
+            <td>Web Bluetooth</td>
+            <td>Bluetooth 4.0 BLE GATT</td>
+            <td>58mm Portable Bluetooth Receipt Printer</td>
+          </tr>
+          <tr>
+            <td>USB Printers</td>
+            <td>Web Serial / USB</td>
+            <td>USB 2.0 / Serial COM</td>
+            <td>80mm USB Thermal Printer (TVS RP3150)</td>
+          </tr>
+          <tr>
+            <td>Database Engine</td>
+            <td>MySQL / MariaDB</td>
+            <td>MySQL 5.7+ / MariaDB 10.3+</td>
+            <td>MySQL 8.0 on AlmaLinux 9 cPanel Server</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 2 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 3: DATABASE ARCHITECTURE -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 3 — Database Engine</div>
+      </div>
+      <h2>3. Database Engine Upgrade: MySQL / MariaDB Dual-Engine Persistence</h2>
+      <p>Prior versions stored data inside a single <code>pos.json</code> file. To eliminate disk-write locking contention during peak order volumes, the updated database layer (<code>lib/db.js</code>) introduces a high-concurrency MySQL pooling architecture.</p>
+
+      <h3>3.1 Managed MySQL Connection Pool</h3>
+      <pre>
+const DB_HOST = process.env.DB_HOST || "localhost";
+const DB_PORT = parseInt(process.env.DB_PORT || "3306", 10);
+const DB_USER = process.env.DB_USER || "root";
+const DB_PASSWORD = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : "";
+const DB_NAME = process.env.DB_NAME || "akb-cofeemia";
+
+pool = mysql.createPool({
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+      </pre>
+
+      <h3>3.2 Automatic Dynamic Migration & Resilient Fallback</h3>
+      <p>During server startup (<code>db.initDb()</code>), the system executes an automatic initialization routine:</p>
+      <ul>
+        <li><strong>Database & Table Creation:</strong> Automatically executes SQL DDL statements to verify and create tables for <code>settings</code>, <code>categories</code>, <code>items</code>, <code>orders</code>, <code>users</code>, and <code>counters</code>.</li>
+        <li><strong>Legacy Data Seeding:</strong> If the MySQL database is fresh but a historical <code>pos.json</code> file exists, the system automatically parses and migrates all users, menu items, table states, and past billing records into MySQL.</li>
+        <li><strong>Resilient Local JSON Fallback:</strong> If the connection to MySQL fails (e.g. database server restart), the system emits a warning log and seamlessly switches to local <code>data/pos.json</code> persistence, keeping billing online.</li>
+      </ul>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 3 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 4: ESC/POS PRINTING SUB-SYSTEM -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 4 — ESC/POS Encoder</div>
+      </div>
+      <h2>4. Direct ESC/POS Thermal Printing Subsystem & Binary Encoder</h2>
+      <p>To provide instant, driverless printing, Coffeemia POS features an embedded JavaScript ESC/POS binary command encoder inside <code>public/print.js</code>.</p>
+
+      <h3>4.1 ESC/POS Command Hexadecimal Mapping Table</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Command Name</th>
+            <th>ESC/POS Code</th>
+            <th>Hexadecimal Bytes</th>
+            <th>Operational Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Initialize Printer</td><td>ESC @</td><td>0x1B 0x40</td><td>Resets hardware print buffer and default modes.</td></tr>
+          <tr><td>Select Font A/B</td><td>ESC M n</td><td>0x1B 0x4D n</td><td>Toggles Font A (standard) or Font B (compact).</td></tr>
+          <tr><td>Text Alignment</td><td>ESC a n</td><td>0x1B 0x61 n</td><td>Aligns text: 0 = Left, 1 = Center, 2 = Right.</td></tr>
+          <tr><td>Bold Emphasis</td><td>ESC E n</td><td>0x1B 0x45 n</td><td>Enables (1) or disables (0) bold emphasis.</td></tr>
+          <tr><td>Character Size</td><td>GS ! n</td><td>0x1D 0x21 n</td><td>Multiplies character width and height.</td></tr>
+          <tr><td>Feed Lines</td><td>ESC d n</td><td>0x1B 0x64 n</td><td>Feeds paper by n line spaces.</td></tr>
+          <tr><td>Auto Paper Cut</td><td>GS V m</td><td>0x1D 0x56 0x42 0x00</td><td>Triggers automatic guillotine paper cutter.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 Encoder Implementation Excerpt</h3>
+      <pre>
+function EscPosEncoder() { this.buffer = []; }
+EscPosEncoder.prototype.init = function () { this.buffer.push(0x1B, 0x40); return this; };
+EscPosEncoder.prototype.align = function (pos) {
+  const v = pos === "center" || pos === "c" ? 1 : pos === "right" || pos === "r" ? 2 : 0;
+  this.buffer.push(0x1B, 0x61, v); return this;
+};
+EscPosEncoder.prototype.bold = function (enable) { this.buffer.push(0x1B, 0x45, enable !== false ? 1 : 0); return this; };
+EscPosEncoder.prototype.text = function (str) {
+  const clean = String(str || "").replace(/₹/g, "Rs.").replace(/·/g, "-");
+  const bytes = new TextEncoder().encode(clean);
+  for (let i = 0; i < bytes.length; i++) this.buffer.push(bytes[i]);
+  return this;
+};
+EscPosEncoder.prototype.cut = function () { this.buffer.push(0x1D, 0x56, 0x42, 0x00); return this; };
+      </pre>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 4 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 5: MULTI-CHANNEL PRINTING PROTOCOLS -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 5 — Printing Protocols</div>
+      </div>
+      <h2>5. Multi-Channel Thermal Printing Protocols</h2>
+      <p>Coffeemia POS provides four independent hardware printing protocols to guarantee compatibility across all POS setups.</p>
+
+      <h3>5.1 Protocol Channel Specifications</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Printing Channel</th>
+            <th>Transport Interface</th>
+            <th>Target Hardware</th>
+            <th>Key Advantage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Wi-Fi / Network IP</strong></td>
+            <td>Raw TCP Port 9100 Socket</td>
+            <td>Ethernet / Wi-Fi POS Printers</td>
+            <td>Fastest execution; accessible from any tablet/PC.</td>
+          </tr>
+          <tr>
+            <td><strong>Web Bluetooth</strong></td>
+            <td>Bluetooth GATT (navigator.bluetooth)</td>
+            <td>Handheld Bluetooth Thermal Printers</td>
+            <td>Driverless mobile billing on tablets and smartphones.</td>
+          </tr>
+          <tr>
+            <td><strong>Web Serial / USB</strong></td>
+            <td>Serial Stream (navigator.serial)</td>
+            <td>Direct USB / COM Port Printers</td>
+            <td>Zero latency for fixed billing counter setups.</td>
+          </tr>
+          <tr>
+            <td><strong>Browser Spooler</strong></td>
+            <td>HTML CSS (@media print)</td>
+            <td>Standard OS Printers</td>
+            <td>Universal fallback option for traditional setups.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 Direct Network TCP Socket Implementation (`server.js`)</h3>
+      <pre>
+/* Endpoint: POST /api/print/network */
+const client = new net.Socket();
+client.setTimeout(4000);
+client.connect(port, ip, () => {
+  client.write(buffer, () => {
+    client.end();
+    return send(res, 200, { ok: true, message: `Sent ${buffer.length} bytes to ${ip}:${port}` });
+  });
+});
+      </pre>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 5 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 6: RECEIPT & KOT LAYOUT ENGINEERING -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 6 — Layout Engineering</div>
+      </div>
+      <h2>6. Receipt & Kitchen Order Ticket (KOT) Layout Engineering</h2>
+      <p>Paper roll dimensions determine character layout grids. Coffeemia POS features dedicated line-formatting rules for 58mm and 80mm roll sizes.</p>
+
+      <pre>
+==================================================
+58mm Paper Roll (30 Columns Grid Layout):
+Item       Qty   Rate    Amount
+------------------------------
+Cappuccino   2  140.00   280.00
+Lemon Tea    1   40.00    40.00
+------------------------------
+Subtotal:                320.00
+GST (5%):                 16.00
+TOTAL:                Rs.336.00
+==================================================
+
+==================================================
+80mm Paper Roll (46 Columns Grid Layout):
+Item                    Qty     Rate     Amount
+--------------------------------------------------
+Cappuccino                2   140.00     280.00
+Lemon Tea                 1    40.00      40.00
+--------------------------------------------------
+Subtotal:                                320.00
+GST (5%):                                 16.00
+TOTAL:                                Rs.336.00
+==================================================
+      </pre>
+
+      <h3>6.1 Multi-Station KOT Routing</h3>
+      <p>When an order ticket is generated, items are split and routed to specific preparation stations:</p>
+      <ul>
+        <li><strong>Kitchen Station:</strong> Food items, snacks, burgers, and main dishes.</li>
+        <li><strong>Beverages Station:</strong> Espresso coffees, teas, shakes, and mocktails.</li>
+      </ul>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 6 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 7: SYSTEM SETTINGS INTERFACE -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 7 — Hardware Controls</div>
+      </div>
+      <h2>7. System Settings & Hardware Management Interface</h2>
+      <p>The updated Settings panel provides interactive hardware controls for managers and administrators.</p>
+
+      <pre>
++-----------------------------------------------------------------------------------+
+| HARDWARE & THERMAL PRINTING CONFIGURATION PANEL                                   |
++-----------------------------------------------------------------------------------+
+| Select Print Method:                                                              |
+| [ Network / Wi-Fi IP Printer (ESC/POS)                         v ]                |
+|                                                                                   |
+| Printer IP Address:                    Port:                                      |
+| [ 192.168.1.100                     ]  [ 9100  ]                                |
+|                                                                                   |
+| Paper Roll Width:                      Printing Options:                          |
+| ( ) 58mm (Small Roll)                  [X] Enable On-Screen Print Preview Modal   |
+| (*) 80mm (Wide Roll)                   [X] Auto-Print KOT on Order Save           |
+|                                        [X] Print Dynamic UPI QR on Customer Bill  |
+|                                                                                   |
+| Action Buttons:                                                                   |
+| [ 🖨 Send Test Print ]   [ 📱 Pair Bluetooth ]   [ 🔌 Connect Serial / USB ]     |
++-----------------------------------------------------------------------------------+
+      </pre>
+
+      <h3>7.1 Configuration Options Overview</h3>
+      <ul>
+        <li><code>printMethod</code>: Select active protocol (<code>browser</code>, <code>network</code>, <code>bluetooth</code>, <code>serial</code>).</li>
+        <li><code>printerIp</code> & <code>printerPort</code>: Network printer IP and TCP port settings.</li>
+        <li><code>showPrintPreview</code>: Toggles interactive receipt modal prior to printing.</li>
+        <li><code>upiQrOnBill</code>: Enables dynamic UPI QR rendering on printed bills.</li>
+      </ul>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 7 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 8: INFRASTRUCTURE & DEPLOYMENT -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 8 — Deployment Suite</div>
+      </div>
+      <h2>8. Infrastructure, Server Setup & Production Deployment</h2>
+
+      <h3>8.1 Environment Variables (`.env`)</h3>
+      <pre>
+PORT=3100
+TZ=Asia/Kolkata
+NODE_ENV=production
+
+# MySQL Database Connection Settings
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=akbgroups_coffeemia_tm
+DB_USER=akbgroups_coffeemia_tm_user
+DB_PASSWORD=YourSecurePasswordHere
+      </pre>
+
+      <h3>8.2 PM2 Ecosystem Configuration (`ecosystem.config.js`)</h3>
+      <pre>
+module.exports = {
+  apps: [{
+    name: "coffeemia-pos",
+    script: "server.js",
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: "1G",
+    env_production: { NODE_ENV: "production", PORT: 3100, TZ: "Asia/Kolkata" }
+  }]
+};
+      </pre>
+
+      <h3>8.3 Apache Reverse Proxy Rules (`.htaccess`)</h3>
+      <pre>
+Options -Indexes
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+RewriteRule ^$ http://127.0.0.1:3100/ [P,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ http://127.0.0.1:3100/$1 [P,L]
+      </pre>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 8 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 9: REST API SPECIFICATION -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 9 — REST API Specs</div>
+      </div>
+      <h2>9. Complete REST API Specification & Endpoint Documentation</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint Route</th>
+            <th>HTTP Method</th>
+            <th>Access Level</th>
+            <th>Description & Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>`/api/auth/login`</td><td>POST</td><td>Public</td><td>Authenticates cashier/admin via PIN or password.</td></tr>
+          <tr><td>`/api/bootstrap`</td><td>GET</td><td>Authenticated</td><td>Returns initial state (categories, items, tables, settings).</td></tr>
+          <tr><td>`/api/settings`</td><td>PUT</td><td>Admin</td><td>Updates store info, tax rates, and printer hardware config.</td></tr>
+          <tr><td>`/api/print/network`</td><td>POST</td><td>Cashier/Admin</td><td>Sends raw ESC/POS binary bytes to network IP printer via TCP.</td></tr>
+          <tr><td>`/api/orders`</td><td>GET, POST</td><td>Cashier/Admin</td><td>Fetches order list or creates new order ticket.</td></tr>
+          <tr><td>`/api/orders/:id/settle`</td><td>POST</td><td>Cashier/Admin</td><td>Settles bill (Cash/UPI/Card) and issues bill number.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>9.1 Network Print API Payload Example (`POST /api/print/network`)</h3>
+      <pre>
+{
+  "ip": "192.168.1.100",
+  "port": 9100,
+  "bytes": [27, 64, 27, 97, 1, 67, 111, 102, 102, 101, 101, 109, 105, 97, 10]
+}
+      </pre>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 9 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 10: MYSQL DDL SCHEMAS -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 10 — MySQL Schemas</div>
+      </div>
+      <h2>10. MySQL Relational Database Schema (DDL)</h2>
+
+      <pre>
+CREATE TABLE IF NOT EXISTS `settings` (
+  `setting_key` VARCHAR(100) PRIMARY KEY,
+  `setting_value` LONGTEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id` VARCHAR(36) PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `local_name` VARCHAR(100) DEFAULT '',
+  `station` VARCHAR(50) DEFAULT 'Kitchen',
+  `sort` INT DEFAULT 0,
+  `active` TINYINT(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `items` (
+  `id` VARCHAR(36) PRIMARY KEY,
+  `category_id` VARCHAR(36) NOT NULL,
+  `name` VARCHAR(120) NOT NULL,
+  `local_name` VARCHAR(120) DEFAULT '',
+  `code` VARCHAR(20) DEFAULT '',
+  `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `available` TINYINT(1) DEFAULT 1,
+  `archived` TINYINT(1) DEFAULT 0,
+  `sort` INT DEFAULT 0,
+  `price_history` LONGTEXT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `orders` (
+  `id` VARCHAR(36) PRIMARY KEY,
+  `no` INT DEFAULT NULL,
+  `token` INT DEFAULT 1,
+  `table_id` VARCHAR(36) DEFAULT NULL,
+  `table_name` VARCHAR(60) DEFAULT '',
+  `mode` VARCHAR(30) DEFAULT 'dine-in',
+  `status` VARCHAR(30) DEFAULT 'open',
+  `lines` LONGTEXT NOT NULL,
+  `totals` LONGTEXT DEFAULT NULL,
+  `discount_type` VARCHAR(20) DEFAULT 'amount',
+  `discount_value` DECIMAL(10,2) DEFAULT 0.00,
+  `customer` LONGTEXT DEFAULT NULL,
+  `kot_count` INT DEFAULT 0,
+  `void_log` LONGTEXT DEFAULT NULL,
+  `created_by` VARCHAR(36) DEFAULT NULL,
+  `created_at` VARCHAR(50) DEFAULT NULL,
+  `paid_at` VARCHAR(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      </pre>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 10 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 11: OPERATIONAL GUIDES -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 11 — Operational Guides</div>
+      </div>
+      <h2>11. Operational Guides for Cashiers & Administrators</h2>
+
+      <h3>11.1 Cashier Billing Workflow</h3>
+      <ol style="margin-left: 20px; margin-bottom: 20px;">
+        <li>Select active Table or Takeaway Mode on the main dashboard.</li>
+        <li>Tap menu items from the left category selector to build the order cart.</li>
+        <li>Click <strong>Send KOT</strong> to fire kitchen tickets directly to thermal printers.</li>
+        <li>Upon customer payment, select Cash / UPI / Card and click <strong>Settle Bill</strong>.</li>
+        <li>The system automatically prints the final customer receipt and triggers paper cut.</li>
+      </ol>
+
+      <h3>11.2 Admin Printer Setup Instructions</h3>
+      <ol style="margin-left: 20px;">
+        <li><strong>Wi-Fi Printer:</strong> Print self-test sheet to find IP. Enter IP & Port 9100 in Settings > Hardware Settings. Click Save & Test Print.</li>
+        <li><strong>Bluetooth Printer:</strong> Turn on printer. Select Web Bluetooth in Settings and click Pair Bluetooth Device.</li>
+      </ol>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 11 of 12</span>
+    </div>
+  </div>
+
+  <!-- PAGE 12: TROUBLESHOOTING & FILE AUDIT -->
+  <div class="page">
+    <div class="page-content">
+      <div class="header-bar">
+        <div class="logo">COFFEEMIA POS</div>
+        <div class="doc-tag">Page 12 — Troubleshooting & Audit</div>
+      </div>
+      <h2>12. Troubleshooting Matrix & Code File Audit</h2>
+
+      <h3>12.1 System Diagnostic Matrix</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Symptom</th>
+            <th>Possible Cause</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Network Print 504 Error</td>
+            <td>Printer IP changed / offline</td>
+            <td>Verify IP via self-test sheet; ensure printer and POS terminal share subnet.</td>
+          </tr>
+          <tr>
+            <td>Garbled Print Output</td>
+            <td>Codepage mismatch</td>
+            <td>System converts ₹ to Rs. Ensure printer is set to standard CP437 ASCII codepage.</td>
+          </tr>
+          <tr>
+            <td>Bluetooth Fail</td>
+            <td>Non-HTTPS or BLE off</td>
+            <td>Web Bluetooth requires HTTPS or localhost. Enable BLE flags in browser.</td>
+          </tr>
+          <tr>
+            <td>DB Connection Error</td>
+            <td>MySQL service offline</td>
+            <td>Check MySQL status. Application automatically runs on local JSON backup until DB recovers.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>12.2 File Audit Summary</h3>
+      <p><strong>Untracked Files Added:</strong> <code>.env</code>, <code>.env.example</code>, <code>.htaccess</code>, <code>deploy.sh</code>, <code>ecosystem.config.js</code>, <code>package-lock.json</code>.</p>
+      <p><strong>Modified Core Files:</strong> <code>lib/db.js</code>, <code>lib/seed.js</code>, <code>package.json</code>, <code>server.js</code>, <code>public/print.js</code>, <code>public/app.js</code>, <code>public/index.html</code>, <code>public/app.css</code>, <code>.gitignore</code>.</p>
+    </div>
+    <div class="footer-bar">
+      <span>Coffeemia Cafe POS v2.0.0 Client Release Manual</span>
+      <span>Page 12 of 12</span>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -2,3 +2,7 @@ node_modules/
 data/
 *.corrupt-*
 .DS_Store
+# .env
+# .env.*
+# !.env.example
+

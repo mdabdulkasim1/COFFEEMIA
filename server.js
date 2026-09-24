@@ -12,9 +12,31 @@
 process.env.TZ = process.env.TZ || "Asia/Kolkata";
 
 const http = require("http");
+const net = require("net");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
+
+// Load .env variables if .env exists
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, "utf8");
+  for (const line of envContent.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx > 0) {
+      const key = trimmed.slice(0, eqIdx).trim();
+      let val = trimmed.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
 
 const db = require("./lib/db");
 const auth = require("./lib/auth");
@@ -22,7 +44,7 @@ const { seedIfEmpty, warnIfDefaultPasswords } = require("./lib/seed");
 const { computeTotals, money, clampQty } = require("./lib/pricing");
 const {
   buildReport, ordersToCsv, buildCustomers, customersToCsv,
-  normalisePhone, dateKey, todayKey,
+  normalisePhone, dateKey, todayKey, getOrderBusinessDate,
 } = require("./lib/reports");
 const gstin = require("./lib/gstin");
 
@@ -334,7 +356,7 @@ async function handleApi(req, res, pathname, query) {
         s.gstin = gstinCheck.value;
       }
       if ("taxMode" in body) s.taxMode = body.taxMode === "exclusive" ? "exclusive" : "inclusive";
-      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill"]) {
+      for (const k of ["taxEnabled", "serviceChargeEnabled", "roundOff", "showLocalNames", "printKotOnSave", "splitGst", "trademark", "upiQrOnBill", "showPrintPreview"]) {
         if (k in body) s[k] = !!body[k];
       }
       for (const k of ["taxPercent", "serviceChargePercent"]) {
@@ -344,10 +366,63 @@ async function handleApi(req, res, pathname, query) {
         const modes = body.paymentModes.map((m) => str(m, 20)).filter(Boolean).slice(0, 8);
         if (modes.length) s.paymentModes = modes;
       }
+      if ("printMethod" in body) {
+        s.printMethod = ["browser", "network", "bluetooth", "serial"].includes(body.printMethod) ? body.printMethod : "browser";
+      }
+      if ("printerIp" in body) s.printerIp = str(body.printerIp, 40).trim();
+      if ("printerPort" in body) s.printerPort = Math.max(1, Math.min(num(body.printerPort, 9100), 65535));
       if (s.printWidth !== "58mm") s.printWidth = "80mm";
       db.save();
       return send(res, 200, { settings: s, gstinInfo: gstinCheck });
     }
+  }
+
+  /* ---------- direct network thermal printing ---------- */
+  if (route[0] === "print" && route[1] === "network" && method === "POST") {
+    const body = await readBody(req);
+    const ip = str(body.ip || data.settings.printerIp, 40).trim();
+    const port = num(body.port || data.settings.printerPort, 9100);
+    if (!ip) return sendError(res, 400, "Please enter a Wi-Fi printer IP address in Settings.");
+
+    let buffer = null;
+    if (Array.isArray(body.bytes)) {
+      buffer = Buffer.from(body.bytes);
+    } else if (typeof body.text === "string") {
+      buffer = Buffer.from(body.text, "utf8");
+    } else {
+      return sendError(res, 400, "Invalid print payload");
+    }
+
+    const client = new net.Socket();
+    let responded = false;
+    client.setTimeout(4000);
+
+    client.connect(port, ip, () => {
+      client.write(buffer, () => {
+        client.end();
+        if (!responded) {
+          responded = true;
+          return send(res, 200, { ok: true, message: `Sent ${buffer.length} bytes to ${ip}:${port}` });
+        }
+      });
+    });
+
+    client.on("timeout", () => {
+      client.destroy();
+      if (!responded) {
+        responded = true;
+        return sendError(res, 504, `Printer at ${ip}:${port} timed out (unreachable).`);
+      }
+    });
+
+    client.on("error", (err) => {
+      client.destroy();
+      if (!responded) {
+        responded = true;
+        return sendError(res, 500, `Could not connect to printer at ${ip}:${port} (${err.message}).`);
+      }
+    });
+    return;
   }
 
   /* ---------- categories ---------- */
@@ -600,9 +675,10 @@ async function handleApi(req, res, pathname, query) {
       let list = data.orders.filter((o) => {
         if (status && o.status !== status) return false;
         if (o.status === "open") return true;
-        return o.businessDate >= from && o.businessDate <= to;
+        const bDate = getOrderBusinessDate(o);
+        return bDate >= from && bDate <= to;
       });
-      if (!isAdmin) list = list.filter((o) => o.businessDate === todayKey() || o.status === "open");
+      if (!isAdmin) list = list.filter((o) => getOrderBusinessDate(o) === todayKey() || o.status === "open");
       list = list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, Math.min(num(query.limit, 300), 1000));
       return send(res, 200, { orders: list });
     }
@@ -808,11 +884,18 @@ async function handleApi(req, res, pathname, query) {
 
   if (route[0] === "dayclose" && method === "GET") {
     if (needAdmin()) return;
-    const date = str(query.date, 10) || todayKey();
-    const report = buildReport(data, date, date);
-    const orders = data.orders.filter((o) => o.businessDate === date && o.status === "paid");
+    const from = str(query.from || query.date, 10) || todayKey();
+    const to = str(query.to || query.date, 10) || from;
+    const report = buildReport(data, from, to);
+    const orders = data.orders.filter((o) => {
+      const bDate = getOrderBusinessDate(o);
+      return bDate >= from && bDate <= to && o.status === "paid";
+    });
     report.voids = data.orders
-      .filter((o) => o.businessDate === date)
+      .filter((o) => {
+        const bDate = getOrderBusinessDate(o);
+        return bDate >= from && bDate <= to;
+      })
       .flatMap((o) => (o.voidLog || []).map((v) => Object.assign({ table: o.tableName }, v)));
     report.firstBill = orders.length ? Math.min(...orders.map((o) => o.no)) : null;
     report.lastBill = orders.length ? Math.max(...orders.map((o) => o.no)) : null;
@@ -824,7 +907,10 @@ async function handleApi(req, res, pathname, query) {
     const from = str(query.from, 10) || todayKey();
     const to = str(query.to, 10) || from;
     const list = data.orders
-      .filter((o) => o.businessDate >= from && o.businessDate <= to && o.status !== "open")
+      .filter((o) => {
+        const bDate = getOrderBusinessDate(o);
+        return bDate >= from && bDate <= to && o.status !== "open";
+      })
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
     return send(res, 200, ordersToCsv(data, list), {
       "Content-Type": "text/csv; charset=utf-8",
@@ -854,12 +940,19 @@ const server = http.createServer(async (req, res) => {
 });
 
 if (require.main === module) {
-  const data = seedIfEmpty();
-  server.listen(PORT, () => {
-    console.log(`[pos] Coffeemia POS running on http://localhost:${PORT}`);
-    console.log(`[pos] Data file: ${db.DB_FILE}`);
-    warnIfDefaultPasswords(data);
-  });
+  db.initDb()
+    .then(() => {
+      const data = seedIfEmpty();
+      server.listen(PORT, () => {
+        console.log(`[pos] Coffeemia POS running on http://localhost:${PORT}`);
+        console.log(`[pos] Data file: ${db.DB_FILE}`);
+        warnIfDefaultPasswords(data);
+      });
+    })
+    .catch((err) => {
+      console.error("[pos] Failed to start server:", err);
+      process.exit(1);
+    });
 }
 
 module.exports = server;
