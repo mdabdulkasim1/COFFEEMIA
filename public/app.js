@@ -256,7 +256,7 @@
     S.today = data.today;
     document.title = (S.settings.cafeName || "Cafe") + " POS";
     document.body.classList.add("app-ready");
-    if (!location.hash || location.hash === "#/") location.hash = "#/floor";
+    if (!location.hash || location.hash === "#/") location.hash = "#/order/quick/takeaway";
     route();
   }
 
@@ -285,21 +285,21 @@
   };
 
   function parseHash() {
-    const raw = (location.hash || "#/floor").replace(/^#\/?/, "");
+    const raw = (location.hash || "#/order/quick/takeaway").replace(/^#\/?/, "");
     const parts = raw.split("/").filter(Boolean);
-    return { name: parts[0] || "floor", params: parts.slice(1) };
+    return { name: parts[0] || "order", params: parts.slice(1) };
   }
 
   function route() {
     if (!S.user) return renderLogin();
     const parsed = parseHash();
-    const def = ROUTES[parsed.name] || ROUTES.floor;
+    const def = ROUTES[parsed.name] || ROUTES.order;
     if (def.admin && !isAdmin()) {
       toast("That section is for the admin only.", "bad");
-      location.hash = "#/floor";
+      location.hash = "#/order/quick/takeaway";
       return;
     }
-    S.route = { name: ROUTES[parsed.name] ? parsed.name : "floor", params: parsed.params };
+    S.route = { name: ROUTES[parsed.name] ? parsed.name : "order", params: parsed.params };
     renderShell();
     Promise.resolve(def.render(parsed.params)).catch((e) => toast(e.message, "bad"));
   }
@@ -311,14 +311,14 @@
   /* ================================================================== */
   const NAV = [
     { group: "Counter" },
-    { key: "floor", label: "Tables", icon: "🍽" },
+    { key: "floor", label: "Tables", icon: "🍽", hidden: true },
     { key: "order", label: "Quick order", icon: "⚡", hash: "#/order/quick/takeaway" },
     { key: "bills", label: "Bills", icon: "🧾" },
     { group: "Business" },
     { key: "dashboard", label: "Dashboard", icon: "📊" },
     { key: "guests", label: "Guests", icon: "📱", admin: true },
     { key: "menu", label: "Menu & rates", icon: "📋", admin: true },
-    { key: "tables", label: "Table layout", icon: "🪑", admin: true },
+    { key: "tables", label: "Table layout", icon: "🪑", admin: true, hidden: true },
     { key: "staff", label: "Staff & access", icon: "👥", admin: true },
     { key: "settings", label: "Settings", icon: "⚙" },
   ];
@@ -326,8 +326,16 @@
   function renderShell() {
     const running = S.openOrders.length;
     const nav = NAV.map((n) => {
+      if (n.hidden) return "";
       if (n.group) return '<div class="nav-sep">' + esc(n.group) + "</div>";
       if (n.admin && !isAdmin()) return "";
+      if (n.action) {
+        return (
+          '<button type="button" class="nav-item" data-act="' + n.action + '">' +
+          '<span class="ico">' + n.icon + "</span>" + esc(n.label) +
+          '</button>'
+        );
+      }
       const on = S.route.name === n.key && !(n.hash && S.route.params[0] !== "quick");
       return (
         '<a class="nav-item ' + (on ? "on" : "") + '" href="' + (n.hash || "#/" + n.key) + '">' +
@@ -341,7 +349,13 @@
     app.innerHTML =
       '<div class="shell">' +
       '<aside class="sidebar" id="sidebar">' +
-      '<div class="logo"><b>' + brandName() + "</b><span>Point of sale</span></div>" +
+      '<div class="logo"><b>' + brandName() + "</b><span>Point of sale</span>" +
+      '<div class="sidebar-bt-wrap">' +
+      '<button type="button" class="sidebar-bt-btn' + (S.settings.printMethod === "bluetooth" ? " active" : "") + '" data-act="pair-bluetooth" title="Pair Bluetooth Thermal Printer">' +
+      '<span class="bt-ico">🔵</span>' +
+      '<span class="bt-text">Pair Bluetooth Printer</span>' +
+      '</button>' +
+      '</div></div>' +
       nav +
       '<div class="foot"><b>' + esc(S.user.name) + "</b>" +
       (isAdmin() ? "Admin" : "Counter staff") + " · " + esc(S.user.username) +
@@ -1097,7 +1111,10 @@
         '<button class="btn" data-act="export-csv">⬇ Excel / CSV</button>' +
         "</div>"
       : '<div class="filters"><span class="pill muted">Today · ' + esc(v.dashFrom) + "</span>" +
-        '<span class="small muted">Counter staff see the day\'s figures. Ask the owner for older reports.</span></div>';
+        '<span style="flex:1"></span>' +
+        '<button class="btn" data-act="view-day-close" title="View Day Close Report">👁️ View Day close</button>' +
+        '<button class="btn" data-act="day-close" title="Print Day Close Report">🧾 Day close</button>' +
+        "</div>";
 
     const kpi = (label, value, sub, cls) =>
       '<div class="kpi ' + (cls || "") + '"><div class="lbl">' + esc(label) + '</div><div class="val">' + value + "</div>" +
@@ -1212,6 +1229,8 @@
       ).join("") + "</select></label>" +
       '<button class="btn primary" data-act="bills-apply">Show</button>' +
       '<span style="flex:1"></span>' +
+      '<button class="btn" data-act="view-day-close" title="View Day Close Report">👁️ View Day close</button>' +
+      '<button class="btn" data-act="day-close" title="Print Day Close Report">🧾 Day close</button>' +
       (isAdmin() ? '<button class="btn" data-act="export-csv">⬇ Excel / CSV</button>' : "") +
       "</div>" +
       '<div class="card">' +
@@ -2317,7 +2336,12 @@
           pm.value = "bluetooth";
           pm.dispatchEvent(new Event("change"));
         }
-      }).catch(() => {});
+        document.querySelectorAll(".sidebar-bt-btn").forEach((btn) => btn.classList.add("active"));
+      }).catch((err) => {
+        if (err && err.message && !err.message.includes("cancelled")) {
+          toast(err.message, "bad");
+        }
+      });
     },
     "pair-serial": () => {
       Print.pairSerial().then((port) => {

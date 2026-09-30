@@ -883,9 +883,9 @@ async function handleApi(req, res, pathname, query) {
   }
 
   if (route[0] === "dayclose" && method === "GET") {
-    if (needAdmin()) return;
-    const from = str(query.from || query.date, 10) || todayKey();
-    const to = str(query.to || query.date, 10) || from;
+    let from = str(query.from || query.date, 10) || todayKey();
+    let to = str(query.to || query.date, 10) || from;
+    if (!isAdmin) { from = todayKey(); to = from; }
     const report = buildReport(data, from, to);
     const orders = data.orders.filter((o) => {
       const bDate = getOrderBusinessDate(o);

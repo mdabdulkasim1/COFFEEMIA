@@ -254,6 +254,55 @@ sup.tm {
   text-transform: uppercase;
 }
 
+.sidebar-bt-wrap {
+  margin-top: 10px;
+}
+
+.sidebar-bt-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: #2e2924;
+  color: #efe7db;
+  border: 1px solid #453c34;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.sidebar-bt-btn:hover {
+  background: #3c342d;
+  border-color: var(--brand, #e05e2b);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-bt-btn:active {
+  transform: scale(0.98);
+}
+
+.sidebar-bt-btn.active {
+  border-color: var(--brand, #e05e2b);
+  background: rgba(224, 94, 43, 0.18);
+  color: #ffa575;
+}
+
+.sidebar-bt-btn .bt-ico {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.sidebar-bt-btn .bt-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
