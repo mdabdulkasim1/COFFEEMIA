@@ -56,6 +56,13 @@
     const p = (x) => String(x).padStart(2, "0");
     return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
   }
+  /** A date string n days either side of another, e.g. shiftDate("2026-10-01", -6). */
+  function shiftDate(ymd, n) {
+    const d = new Date(ymd + "T12:00:00");
+    d.setDate(d.getDate() + n);
+    const p = (x) => String(x).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
   function since(iso) {
     const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     if (mins < 60) return mins + " min";
@@ -1075,6 +1082,12 @@
     screen().innerHTML = '<div class="empty">Loading sales…</div>';
     const out = await api("/dashboard?from=" + v.dashFrom + "&to=" + v.dashTo);
     const r = out.report;
+    // The hour-by-hour comparison always looks back from the end of the chosen
+    // range, whatever that range is, so "today against the days before it"
+    // works even when the filter is set to a single day.
+    if (!v.cmpDays) v.cmpDays = 3;
+    const cmpFrom = shiftDate(v.dashTo, -(v.cmpDays - 1));
+    const cmp = (await api("/dashboard?from=" + cmpFrom + "&to=" + v.dashTo)).report;
     const t = r.totals;
     const cur = S.settings.currency || "";
     const sameDay = v.dashFrom === v.dashTo;
@@ -1115,6 +1128,12 @@
       kpi("On the floor", fmt(t.openValue), t.openCount + (t.openCount === 1 ? " running bill" : " running bills")) +
       kpi(t.tax ? (S.settings.taxName || "GST") + " collected" : "Discounts", fmt(t.tax || t.discount),
         t.tax ? fmt(t.discount) + " discounts · " + t.cancelledCount + " cancelled" : t.cancelledCount + " cancelled · " + fmt(t.cancelledValue)) +
+      (r.peakHour ? kpi("Peak hour", esc(r.peakHour.label),
+        fmt(r.peakHour.avg) + " a day on average") : "") +
+      (r.rushWindow && r.rushWindow.share ? kpi(esc(r.rushWindow.label) + " share",
+        r.rushWindow.share + "%", "of the period's takings") : "") +
+      (r.drinksOnly && r.drinksOnly.bills ? kpi("Drinks-only bills", r.drinksOnly.share + "%",
+        plural(r.drinksOnly.bills, "bill") + " with nothing from the kitchen") : "") +
       (r.mine ? kpi("Your counter", fmt(r.mine.amount), r.mine.orders + " bills by you") : "") +
       "</div>" +
       '<div class="two-col" style="margin-bottom:16px">' +
@@ -1133,17 +1152,22 @@
         { currency: cur, height: 150, empty: "No settled bills in this period yet." }) + "</div></div>" +
       "</div>" +
 
+      hourCompare(cmp, cur, v) +
+      heatSection(cmp, cur) +
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Every item sold</h3>' +
       '<div class="spacer"></div><span class="small muted">' + plural(everyItem.length, "item") + " · sorted by takings</span></div>" +
       (everyItem.length
         ? '<div style="overflow-x:auto"><table class="grid"><thead><tr>' +
-          "<th>Item</th><th>Category</th><th class='num'>Sold</th><th class='num'>Per day</th>" +
+          "<th>Item</th><th>Category</th><th class='num'>Rate</th><th class='num'>Sold</th>" +
+          "<th class='num'>Bills</th><th class='num'>Per day</th>" +
           "<th class='num'>Takings</th><th class='num'>Share</th><th>&nbsp;</th>" +
           "</tr></thead><tbody>" +
           everyItem.map((i) =>
             "<tr><td><b>" + esc(i.key) + "</b></td>" +
             '<td class="small muted">' + esc(i.category || "") + "</td>" +
+            '<td class="num small muted">' + fmt(i.price || 0) + "</td>" +
             '<td class="num">' + i.qty + "</td>" +
+            '<td class="num small muted">' + (i.bills || 0) + "</td>" +
             '<td class="num small muted">' + i.perDay + "</td>" +
             '<td class="num"><b>' + fmt(i.amount) + "</b></td>" +
             '<td class="num small">' + i.share + "%</td>" +
@@ -1163,7 +1187,80 @@
       '<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">' +
       '<div class="lbl small muted" style="font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px">Order type</div>' +
       Charts.ranked(r.byMode.map((m) => ({ label: m.key.replace("-", " "), value: m.amount })), { currency: cur, empty: "—" }) +
-      "</div></div></div>";
+      "</div></div></div></div>" +
+      focusSection(r, cur);
+  }
+
+  /* Day-against-day hourly takings. Today leads in the brand hue; the days
+     before it step back through greys, so the eye reads "newest" without
+     needing a seventh categorical colour. */
+  function hourCompare(cmp, cur, v) {
+    const grid = (cmp && cmp.dayGrid) || [];
+    const axis = (cmp && cmp.hourAxis) || [];
+    const FADE = ["#4b443c", "#6d6458", "#8d8375", "#a79c8c", "#bdb2a0", "#cfc4b2"];
+    const series = grid.map((d, n) => {
+      const newest = n === grid.length - 1;
+      return {
+        label: d.label, values: d.hours, total: d.total,
+        colour: newest ? Charts.PALETTE[0] : FADE[Math.min(FADE.length - 1, grid.length - 2 - n)],
+        emphasis: newest, dashed: !newest,
+      };
+    });
+    const pick = (n, label) =>
+      '<button class="btn sm ' + (v.cmpDays === n ? "dark" : "") + '" data-act="cmp-days" data-days="' + n + '">' + label + "</button>";
+    return (
+      '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Hour by hour, day against day</h3>' +
+      '<div class="spacer"></div>' + pick(3, "Last 3 days") + pick(7, "Last 7 days") + "</div>" +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin-top:0">The solid line is the most recent day. Compare the same hour across days to see which part of the day moved.</p>' +
+      Charts.lines(series, axis, { currency: cur, empty: "No settled bills in these days yet." }) +
+      "</div></div>"
+    );
+  }
+
+  function heatSection(cmp, cur) {
+    return (
+      '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Day &times; hour</h3>' +
+      '<div class="spacer"></div><span class="pill muted">' + plural(((cmp && cmp.dayGrid) || []).length, "day") + "</span></div>" +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin-top:0">Every hour of every day. Darker is busier — the figure is in each cell, so it reads without relying on colour.</p>' +
+      Charts.heatmap((cmp && cmp.dayGrid) || [], (cmp && cmp.hourAxis) || [],
+        { currency: cur, empty: "No settled bills in these days yet." }) +
+      "</div></div>"
+    );
+  }
+
+  /* Which items to push, what sells alongside what, and what is not moving. */
+  function focusSection(r, cur) {
+    const pairs = r.pairs || [];
+    const slow = r.slowMovers || [];
+    return (
+      '<div class="card" style="margin-top:16px"><div class="card-head"><h3>Menu focus</h3>' +
+      '<div class="spacer"></div><span class="small muted">each bubble is an item · size is takings</span></div>' +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin-top:0">Across is how many you sold, up is the rate. High up but to the left means it earns well and could sell more — those are the ones worth suggesting at the counter.</p>' +
+      Charts.scatter(r.matrix || [], { currency: cur, empty: "No settled bills in this period yet." }) +
+      "</div></div>" +
+      '<div class="two-col" style="margin-top:16px">' +
+      '<div class="card"><div class="card-head"><h3>Bought together</h3>' +
+      '<div class="spacer"></div><span class="pill muted">same bill</span></div><div class="card-pad">' +
+      Charts.ranked(pairs.map((p) => ({ label: p.key, value: p.orders })),
+        { suffix: " bills", empty: "Not enough bills with two or more items yet." }) +
+      (pairs.length ? '<p class="small muted" style="margin-bottom:0">A fixed combo of the top pair is the quickest way to lift the average bill.</p>' : "") +
+      "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Slow movers</h3>' +
+      '<div class="spacer"></div><span class="pill muted">4 or fewer sold</span></div>' +
+      (slow.length
+        ? '<div style="overflow-x:auto"><table class="grid"><thead><tr><th>Item</th><th>Category</th>' +
+          "<th class='num'>Sold</th><th class='num'>Takings</th></tr></thead><tbody>" +
+          slow.map((i) => "<tr><td>" + esc(i.key) + "</td>" +
+            '<td class="small muted">' + esc(i.category || "") + "</td>" +
+            '<td class="num">' + i.qty + "</td>" +
+            '<td class="num">' + fmt(i.amount) + "</td></tr>").join("") +
+          '</tbody></table></div><p class="small muted card-pad" style="margin:0">Worth a look: keep, reprice, or drop to free up prep and stock.</p>'
+        : '<div class="card-pad empty small">Nothing is lagging — every item sold more than four.</div>') +
+      "</div></div>"
+    );
   }
 
   /* ================================================================== */
@@ -2071,6 +2168,7 @@
     discount: () => setDiscount(),
 
     /* dashboard + bills */
+    "cmp-days": (el) => { S.view.cmpDays = Number(el.dataset.days) || 3; renderDashboard(); },
     "dash-preset": (el) => {
       const p = PRESETS[el.dataset.preset];
       S.view.preset = el.dataset.preset;
