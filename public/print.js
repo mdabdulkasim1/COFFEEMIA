@@ -214,9 +214,8 @@
       e.bold(true).line("Item       Qty   Rate    Amount").bold(false);
       e.rule("-", 30);
 
-      (o.lines || []).forEach(function (l, idx) {
-        let prefix = (idx + 1) + ".";
-        let fullItemName = prefix + (l.name || "");
+      (o.lines || []).forEach(function (l) {
+        let fullItemName = String(l.name || "");
         let qtyStr = String(l.qty || 0).padStart(3, " ");
         let rateStr = amt(l.price).padStart(6, " ");
         let amtStr = amt(l.price * l.qty).padStart(8, " ");
@@ -237,9 +236,8 @@
       e.bold(true).line("Item                    Qty     Rate     Amount").bold(false);
       e.rule("-", 46);
 
-      (o.lines || []).forEach(function (l, idx) {
-        let prefix = (idx + 1) + ".";
-        let fullItemName = prefix + (l.name || "");
+      (o.lines || []).forEach(function (l) {
+        let fullItemName = String(l.name || "");
         let qtyStr = String(l.qty || 0).padStart(4, " ");
         let rateStr = amt(l.price).padStart(8, " ");
         let amtStr = amt(l.price * l.qty).padStart(9, " ");
@@ -731,10 +729,10 @@
     const t = o.totals || {};
     const cur = s.currency || "";
     const rows = (o.lines || [])
-      .map(function (l, i) {
+      .map(function (l) {
         const note = l.note ? '<div style="font-size:10px">* ' + esc(l.note) + "</div>" : "";
         return (
-          "<tr><td class=\"col-item\">" + (i + 1) + ". " + esc(l.name) + note + "</td>" +
+          "<tr><td class=\"col-item\">" + esc(l.name) + note + "</td>" +
           '<td class="r col-qty">' + l.qty + "</td>" +
           '<td class="r col-rate">' + amt(l.price) + "</td>" +
           '<td class="r col-amt">' + amt(l.price * l.qty) + "</td></tr>"

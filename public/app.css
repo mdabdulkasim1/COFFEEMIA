@@ -484,6 +484,7 @@ sup.tm {
   gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
 }
 
 .card-head h3 {

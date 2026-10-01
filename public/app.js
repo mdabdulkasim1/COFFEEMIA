@@ -1064,9 +1064,12 @@
   /* ================================================================== */
   const PRESETS = {
     today: { label: "Today", from: () => todayStr(), to: () => todayStr() },
-    yesterday: { label: "Yesterday", from: () => daysAgo(1), to: () => daysAgo(1) },
-    week: { label: "Last 7 days", from: () => daysAgo(6), to: () => todayStr() },
-    month: { label: "Last 30 days", from: () => daysAgo(29), to: () => todayStr() },
+    yesterday: { label: "Yesterday", from: () => daysAgo(1), to: () => todayStr() },
+    last2: { label: "Last 2 days", from: () => daysAgo(2), to: () => todayStr() },
+    last3: { label: "Last 3 days", from: () => daysAgo(3), to: () => todayStr() },
+    last7: { label: "Last 7 days", from: () => daysAgo(7), to: () => todayStr() },
+    last14: { label: "Last 14 days", from: () => daysAgo(14), to: () => todayStr() },
+    last30: { label: "Last 1 month", from: () => daysAgo(30), to: () => todayStr() },
   };
 
   /** Pads the hours actually traded out to a readable span (08:00–22:00 by
@@ -1120,10 +1123,19 @@
       '<div class="kpi ' + (cls || "") + '"><div class="lbl">' + esc(label) + '</div><div class="val">' + value + "</div>" +
       (sub ? '<div class="sub">' + esc(sub) + "</div>" : "") + "</div>";
 
-    const hourly = fillHours(r.byHour);
-    const weekday = r.byWeekday || [];
     const everyItem = r.items || [];
-    const daily = r.byDay.map((d) => ({ label: d.key.slice(5), value: d.amount }));
+    const peakH = t.peakHour || {};
+
+    const rangePresets = (activePreset) => {
+      const keys = ["yesterday", "last2", "last3", "last7", "last14", "last30"];
+      return (
+        '<div class="btn-group" style="display:inline-flex;gap:4px;flex-wrap:wrap">' +
+        keys.map((k) =>
+          '<button class="btn sm ' + (activePreset === k ? "dark" : "") + '" data-act="dash-preset" data-preset="' + k + '">' + PRESETS[k].label + "</button>"
+        ).join("") +
+        "</div>"
+      );
+    };
 
     screen().innerHTML =
       filters +
@@ -1136,35 +1148,99 @@
       kpi("On the floor", fmt(t.openValue), t.openCount + (t.openCount === 1 ? " running bill" : " running bills")) +
       kpi(t.tax ? (S.settings.taxName || "GST") + " collected" : "Discounts", fmt(t.tax || t.discount),
         t.tax ? fmt(t.discount) + " discounts · " + t.cancelledCount + " cancelled" : t.cancelledCount + " cancelled · " + fmt(t.cancelledValue)) +
+      kpi("Peak hour", esc(peakH.label || "—"), fmt(peakH.perDayAvg || 0) + " a day on average") +
       (r.mine ? kpi("Your counter", fmt(r.mine.amount), r.mine.orders + " bills by you") : "") +
       "</div>" +
+
+      /* Image 1: Sales by hour & Payments */
       '<div class="two-col" style="margin-bottom:16px">' +
-      '<div class="card"><div class="card-head"><h3>' + (sameDay ? "Sales by hour" : "Sales by day") + "</h3>" +
-      '<div class="spacer"></div><span class="pill muted">' + (sameDay ? "today" : plural(r.byDay.length, "day")) + "</span></div>" +
-      '<div class="card-pad">' + Charts.bars(sameDay ? hourly : daily, { currency: cur, empty: "No settled bills in this period yet." }) + "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Sales by hour</h3><div class="spacer"></div><span class="pill muted">today</span></div>' +
+      '<div class="card-pad">' +
+      Charts.bars(fillHours(r.byHour), { currency: cur, empty: "No sales in this period" }) +
+      '</div></div>' +
       '<div class="card"><div class="card-head"><h3>Payments</h3></div><div class="card-pad">' +
-      Charts.donut(r.byPayment.map((p) => ({ label: p.key, value: p.amount })), { currency: cur }) + "</div></div>" +
-      "</div>" +
-      '<div class="two-col" style="margin-bottom:16px">' +
-      '<div class="card"><div class="card-head"><h3>Busiest hours</h3>' +
-      '<div class="spacer"></div><span class="pill muted">across the period</span></div>' +
-      '<div class="card-pad">' + Charts.bars(hourly, { currency: cur, empty: "No settled bills in this period yet." }) + "</div></div>" +
-      '<div class="card"><div class="card-head"><h3>Day of the week</h3></div><div class="card-pad">' +
-      Charts.bars(weekday.map((d) => ({ label: d.key, value: d.amount })),
-        { currency: cur, height: 150, empty: "No settled bills in this period yet." }) + "</div></div>" +
+      Charts.donut(r.byPayment.map((p) => ({ label: p.key, value: p.amount })), { currency: cur, empty: "Nothing to show yet" }) + "</div></div>" +
       "</div>" +
 
+      /* Image 1: Busiest hours & Day of the week */
+      '<div class="two-col" style="margin-bottom:16px">' +
+      '<div class="card"><div class="card-head"><h3>Busiest hours</h3><div class="spacer"></div><span class="pill muted">across the period</span></div>' +
+      '<div class="card-pad">' +
+      Charts.bars(fillHours(r.byHour), { currency: cur, empty: "No sales in this period" }) +
+      '</div></div>' +
+      '<div class="card"><div class="card-head"><h3>Day of the week</h3></div><div class="card-pad">' +
+      Charts.bars((r.byWeekday || []).map((w) => ({ label: w.key, value: w.amount })), { currency: cur, empty: "No sales in this period" }) + "</div></div>" +
+      "</div>" +
+
+      /* Image 2: Customers, day by day */
+      '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><h3>Customers, day by day</h3><div class="spacer"></div>' + rangePresets(v.preset) + '</div>' +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin:0 0 12px;line-height:1.5">Every settled bill is one customer or one group. Nobody has given a mobile number yet — ask at the counter and the guest figures below start filling in.</p>' +
+      Charts.customersDayByDay(r.customersDayByDay, { currency: cur, empty: "No settled bills in these days yet." }) +
+      '</div></div>' +
+
+      /* Image 2: Hour by hour, day against day */
+      '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><h3>Hour by hour, day against day</h3><div class="spacer"></div>' + rangePresets(v.preset) + '</div>' +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin:0 0 12px;line-height:1.5">The solid line is the most recent day. Compare the same hour across days to see which part of the day moved.</p>' +
+      Charts.hourComparison(r.multiDayComparison, { currency: cur, empty: "No settled bills in these days yet." }) +
+      '</div></div>' +
+
+      /* Image 2: Day × hour Heatmap matrix */
+      '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><h3>Day × hour</h3><div class="spacer"></div>' + rangePresets(v.preset) + '</div>' +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin:0 0 12px;line-height:1.5">Every hour of every day. Darker is busier — the figure is in each cell, so it reads without relying on colour.</p>' +
+      Charts.heatmap(r.dayByHourGrid, { currency: cur, empty: "No settled bills in these days yet." }) +
+      '</div></div>' +
+
+      /* Image 3: Top sellers, Categories, Counter staff & Order type */
+      '<div class="three-col" style="margin-bottom:16px">' +
+      '<div class="card"><div class="card-head"><h3>Top sellers</h3></div><div class="card-pad">' +
+      Charts.ranked(r.topItems.map((i) => ({ label: i.key, value: i.qty, hint: fmt(i.amount) })), { suffix: " nos", empty: "Nothing yet" }) + "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Categories</h3><div class="spacer"></div><span class="pill muted">before discount</span></div><div class="card-pad">' +
+      Charts.ranked(r.byCategory.map((c) => ({ label: c.key, value: c.amount, hint: c.qty + " nos" })), { currency: cur, empty: "Nothing yet" }) + "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Counter staff</h3></div><div class="card-pad">' +
+      Charts.ranked(r.byStaff.map((s) => ({ label: s.key, value: s.amount, hint: plural(s.orders, "bill") })), { currency: cur, empty: "Nothing yet" }) +
+      '<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">' +
+      '<div class="lbl small muted" style="font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px">ORDER TYPE</div>' +
+      Charts.ranked(r.byMode.map((m) => ({ label: m.key.replace("-", " "), value: m.amount })), { currency: cur, empty: "—" }) +
+      "</div></div></div>" +
+      "</div>" +
+
+      /* Image 3: Menu Focus scatter plot */
+      '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><h3>Menu focus</h3><div class="spacer"></div><span class="pill muted">each bubble is an item · size is takings</span></div>' +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin:0 0 12px;line-height:1.5">Across is how many you sold, up is the rate. High up but to the left means it earns well and could sell more — those are the ones worth suggesting at the counter.</p>' +
+      Charts.menuFocus(r.menuFocus, { currency: cur, empty: "No settled bills in this period yet." }) +
+      '</div></div>' +
+
+      /* Image 4: Bought together & Slow movers */
+      '<div class="two-col" style="margin-bottom:16px">' +
+      '<div class="card"><div class="card-head"><h3>Bought together</h3><div class="spacer"></div><span class="pill muted">same bill</span></div><div class="card-pad">' +
+      Charts.boughtTogether(r.boughtTogether, { currency: cur, empty: "Not enough bills with two or more items yet." }) + '</div></div>' +
+      '<div class="card"><div class="card-head"><h3>Slow movers</h3><div class="spacer"></div><span class="pill muted">4 or fewer sold</span></div><div class="card-pad">' +
+      Charts.slowMovers(r.slowMovers, { currency: cur, empty: "Nothing is lagging — every item sold more than four." }) + '</div></div>' +
+      "</div>" +
+
+      /* Bottom: Every item sold table with Rate & Bills columns */
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Every item sold</h3>' +
       '<div class="spacer"></div><span class="small muted">' + plural(everyItem.length, "item") + " · sorted by takings</span></div>" +
       (everyItem.length
         ? '<div style="overflow-x:auto"><table class="grid"><thead><tr>' +
-          "<th>Item</th><th>Category</th><th class='num'>Sold</th><th class='num'>Per day</th>" +
+          "<th style='width:40px;text-align:center'>S.No</th><th>Item</th><th>Category</th><th class='num'>Rate</th><th class='num'>Sold</th><th class='num'>Bills</th><th class='num'>Per day</th>" +
           "<th class='num'>Takings</th><th class='num'>Share</th><th>&nbsp;</th>" +
           "</tr></thead><tbody>" +
-          everyItem.map((i) =>
-            "<tr><td><b>" + esc(i.key) + "</b></td>" +
+          everyItem.map((i, idx) =>
+            "<tr><td class='small muted' style='text-align:center'><b>" + (idx + 1) + "</b></td>" +
+            "<td><b>" + esc(i.key) + "</b></td>" +
             '<td class="small muted">' + esc(i.category || "") + "</td>" +
+            '<td class="num">' + fmt(i.price || 0) + "</td>" +
             '<td class="num">' + i.qty + "</td>" +
+            '<td class="num small muted">' + (i.orders || 0) + "</td>" +
             '<td class="num small muted">' + i.perDay + "</td>" +
             '<td class="num"><b>' + fmt(i.amount) + "</b></td>" +
             '<td class="num small">' + i.share + "%</td>" +
@@ -1172,19 +1248,7 @@
             Math.max(2, (i.amount / (everyItem[0].amount || 1)) * 100) + '%"></div></div></td></tr>').join("") +
           "</tbody></table></div>"
         : '<div class="empty small">No settled bills in this period yet.</div>') +
-      "</div>" +
-
-      '<div class="three-col">' +
-      '<div class="card"><div class="card-head"><h3>Top sellers</h3></div><div class="card-pad">' +
-      Charts.ranked(r.topItems.map((i) => ({ label: i.key, value: i.qty, hint: fmt(i.amount) })), { suffix: " nos" }) + "</div></div>" +
-      '<div class="card"><div class="card-head"><h3>Categories</h3><div class="spacer"></div><span class="pill muted">before discount</span></div><div class="card-pad">' +
-      Charts.ranked(r.byCategory.map((c) => ({ label: c.key, value: c.amount, hint: c.qty + " nos" })), { currency: cur }) + "</div></div>" +
-      '<div class="card"><div class="card-head"><h3>Counter staff</h3></div><div class="card-pad">' +
-      Charts.ranked(r.byStaff.map((s) => ({ label: s.key, value: s.amount, hint: plural(s.orders, "bill") })), { currency: cur }) +
-      '<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">' +
-      '<div class="lbl small muted" style="font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px">Order type</div>' +
-      Charts.ranked(r.byMode.map((m) => ({ label: m.key.replace("-", " "), value: m.amount })), { currency: cur, empty: "—" }) +
-      "</div></div></div>";
+      "</div>";
   }
 
   /* ================================================================== */
@@ -1356,8 +1420,9 @@
 
     const sections = S.categories.sort((a, b) => a.sort - b.sort).map((c) => {
       const items = S.items.filter((i) => i.categoryId === c.id && !i.archived).sort((a, b) => a.sort - b.sort);
-      const rows = items.map((i) =>
+      const rows = items.map((i, idx) =>
         "<tr>" +
+        '<td class="small muted" style="width:40px;text-align:center"><b>' + (idx + 1) + "</b></td>" +
         "<td><b>" + esc(i.name) + "</b>" + (i.localName ? '<div class="small muted">' + esc(i.localName) + "</div>" : "") + "</td>" +
         '<td class="small muted">' + esc(i.code || "") + "</td>" +
         '<td class="num" style="width:120px"><input type="number" min="0" step="0.5" class="rate-input" data-item="' + i.id + '" value="' + i.price + '" style="text-align:right"></td>' +
@@ -1376,7 +1441,7 @@
         '<button class="btn sm danger" data-act="delete-category" data-cat="' + c.id + '">✕</button>' +
         "</div>" +
         (rows
-          ? '<div style="overflow-x:auto"><table class="grid"><thead><tr><th>Item</th><th>Code</th><th class="num">Rate</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+          ? '<div style="overflow-x:auto"><table class="grid"><thead><tr><th style="width:40px;text-align:center">S.No</th><th>Item</th><th>Code</th><th class="num">Rate</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
           : '<div class="empty small">No items here yet.</div>')
       ) + "</div>";
     }).join("");
@@ -2226,6 +2291,10 @@
     discount: () => setDiscount(),
 
     /* dashboard + bills */
+    "dash-comp-days": (el) => {
+      S.view.dashComparisonDays = Number(el.dataset.days) || 3;
+      renderDashboard();
+    },
     "dash-preset": (el) => {
       const p = PRESETS[el.dataset.preset];
       S.view.preset = el.dataset.preset;
