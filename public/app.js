@@ -1085,8 +1085,10 @@
     // The hour-by-hour comparison always looks back from the end of the chosen
     // range, whatever that range is, so "today against the days before it"
     // works even when the filter is set to a single day.
-    if (!v.cmpDays) v.cmpDays = 3;
-    const cmpFrom = shiftDate(v.dashTo, -(v.cmpDays - 1));
+    if (!v.cmpBack) v.cmpBack = 2;
+    // Each window is "n days before the latest day, plus that day", so every
+    // view always has the current day to compare against.
+    const cmpFrom = shiftDate(v.dashTo, -v.cmpBack);
     const cmp = (await api("/dashboard?from=" + cmpFrom + "&to=" + v.dashTo)).report;
     const t = r.totals;
     const cur = S.settings.currency || "";
@@ -1152,8 +1154,9 @@
         { currency: cur, height: 150, empty: "No settled bills in this period yet." }) + "</div></div>" +
       "</div>" +
 
+      customersSection(cmp, cur, v) +
       hourCompare(cmp, cur, v) +
-      heatSection(cmp, cur) +
+      heatSection(cmp, cur, v) +
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Every item sold</h3>' +
       '<div class="spacer"></div><span class="small muted">' + plural(everyItem.length, "item") + " · sorted by takings</span></div>" +
       (everyItem.length
@@ -1191,6 +1194,18 @@
       focusSection(r, cur);
   }
 
+  /* The windows the owner compares over. The number is days BEFORE the latest
+     day; that day is always included, so every window has a "today" in it. */
+  const CMP_WINDOWS = [
+    [1, "Yesterday"], [2, "Last 2 days"], [3, "Last 3 days"],
+    [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 1 month"],
+  ];
+  function cmpPicker(v) {
+    return CMP_WINDOWS.map(([n, label]) =>
+      '<button class="btn sm ' + (v.cmpBack === n ? "dark" : "") + '" data-act="cmp-days" data-days="' + n + '">' +
+      label + "</button>").join("");
+  }
+
   /* Day-against-day hourly takings. Today leads in the brand hue; the days
      before it step back through greys, so the eye reads "newest" without
      needing a seventh categorical colour. */
@@ -1198,35 +1213,101 @@
     const grid = (cmp && cmp.dayGrid) || [];
     const axis = (cmp && cmp.hourAxis) || [];
     const FADE = ["#4b443c", "#6d6458", "#8d8375", "#a79c8c", "#bdb2a0", "#cfc4b2"];
-    const series = grid.map((d, n) => {
-      const newest = n === grid.length - 1;
-      return {
-        label: d.label, values: d.hours, total: d.total,
-        colour: newest ? Charts.PALETTE[0] : FADE[Math.min(FADE.length - 1, grid.length - 2 - n)],
-        emphasis: newest, dashed: !newest,
-      };
-    });
-    const pick = (n, label) =>
-      '<button class="btn sm ' + (v.cmpDays === n ? "dark" : "") + '" data-act="cmp-days" data-days="' + n + '">' + label + "</button>";
+    let series, note;
+    // Beyond a week, one line per day turns into spaghetti. Past that the chart
+    // shows the latest day against yesterday and the period's average shape,
+    // and the heatmap below carries the day-by-day detail.
+    if (grid.length <= 8) {
+      series = grid.map((d, n) => {
+        const newest = n === grid.length - 1;
+        return {
+          label: d.label, values: d.hours, total: d.total,
+          colour: newest ? Charts.PALETTE[0] : FADE[Math.min(FADE.length - 1, grid.length - 2 - n)],
+          emphasis: newest, dashed: !newest,
+        };
+      });
+      note = "The solid line is the most recent day. Compare the same hour across days to see which part of the day moved.";
+    } else {
+      const avg = axis.map((_, i) =>
+        round2(grid.reduce((n, d) => n + (d.hours[i] || 0), 0) / grid.length));
+      const last = grid[grid.length - 1];
+      const prev = grid[grid.length - 2];
+      series = [
+        { label: "Average of " + grid.length + " days", values: avg,
+          total: round2(avg.reduce((n, x) => n + x, 0)), colour: FADE[3], dashed: true },
+        prev ? { label: prev.label, values: prev.hours, total: prev.total, colour: FADE[0], dashed: true } : null,
+        { label: last.label, values: last.hours, total: last.total, colour: Charts.PALETTE[0], emphasis: true },
+      ].filter(Boolean);
+      note = "Over a week, one line per day is unreadable — this shows the latest day against yesterday and the average shape of the period. The grid below has every day.";
+    }
     return (
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Hour by hour, day against day</h3>' +
-      '<div class="spacer"></div>' + pick(3, "Last 3 days") + pick(7, "Last 7 days") + "</div>" +
+      '<div class="spacer"></div>' + cmpPicker(v) + "</div>" +
       '<div class="card-pad">' +
-      '<p class="small muted" style="margin-top:0">The solid line is the most recent day. Compare the same hour across days to see which part of the day moved.</p>' +
+      '<p class="small muted" style="margin-top:0">' + esc(note) + "</p>" +
       Charts.lines(series, axis, { currency: cur, empty: "No settled bills in these days yet." }) +
       "</div></div>"
     );
   }
 
-  function heatSection(cmp, cur) {
+  function heatSection(cmp, cur, v) {
     return (
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Day &times; hour</h3>' +
-      '<div class="spacer"></div><span class="pill muted">' + plural(((cmp && cmp.dayGrid) || []).length, "day") + "</span></div>" +
+      '<div class="spacer"></div>' + cmpPicker(v) + "</div>" +
       '<div class="card-pad">' +
       '<p class="small muted" style="margin-top:0">Every hour of every day. Darker is busier — the figure is in each cell, so it reads without relying on colour.</p>' +
       Charts.heatmap((cmp && cmp.dayGrid) || [], (cmp && cmp.hourAxis) || [],
         { currency: cur, empty: "No settled bills in these days yet." }) +
       "</div></div>"
+    );
+  }
+
+  /* How many customers came, day by day. A bill is a customer (or a table of
+     them); the mobile numbers the counter captures give the named figure
+     underneath, and which of those were new to the shop. */
+  function customersSection(cmp, cur, v) {
+    const days = (cmp && cmp.perDay) || [];
+    const bills = days.reduce((n, d) => n + d.bills, 0);
+    const guests = days.reduce((n, d) => n + d.guests, 0);
+    const fresh = days.reduce((n, d) => n + d.newGuests, 0);
+    const last = days[days.length - 1];
+    const prev = days[days.length - 2];
+    const move = last && prev && prev.bills
+      ? Math.round(((last.bills - prev.bills) / prev.bills) * 1000) / 10 : null;
+
+    const chart = Charts.bars(
+      days.map((d) => ({ label: d.short, value: d.bills })),
+      { currency: "", height: 170, empty: "No settled bills in these days yet." });
+
+    const rows = days.slice().reverse().map((d) =>
+      "<tr><td><b>" + esc(d.label) + "</b></td>" +
+      '<td class="num">' + d.bills + "</td>" +
+      '<td class="num">' + d.items + "</td>" +
+      '<td class="num">' + fmt(d.average) + "</td>" +
+      '<td class="num">' + fmt(d.amount) + "</td>" +
+      '<td class="num small muted">' + (d.guests || "—") + "</td>" +
+      '<td class="num small muted">' + (d.newGuests || "—") + "</td></tr>").join("");
+
+    return (
+      '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Customers, day by day</h3>' +
+      '<div class="spacer"></div>' + cmpPicker(v) + "</div>" +
+      '<div class="card-pad">' +
+      '<p class="small muted" style="margin-top:0">Every settled bill is one customer or one group. ' +
+      (guests
+        ? "Of " + plural(bills, "bill") + ", " + guests + " gave a mobile number and " + fresh + " of those were new to the shop."
+        : "Nobody has given a mobile number yet — ask at the counter and the guest figures below start filling in.") +
+      (move !== null
+        ? " " + esc(last.label) + " was " + (move >= 0 ? "up " : "down ") + Math.abs(move) + "% on the day before."
+        : "") + "</p>" +
+      chart +
+      "</div>" +
+      (rows
+        ? '<div style="overflow-x:auto"><table class="grid"><thead><tr><th>Day</th>' +
+          "<th class='num'>Customers</th><th class='num'>Items</th><th class='num'>Avg bill</th>" +
+          "<th class='num'>Takings</th><th class='num'>Gave mobile</th><th class='num'>New</th>" +
+          "</tr></thead><tbody>" + rows + "</tbody></table></div>"
+        : "") +
+      "</div>"
     );
   }
 
@@ -2168,7 +2249,7 @@
     discount: () => setDiscount(),
 
     /* dashboard + bills */
-    "cmp-days": (el) => { S.view.cmpDays = Number(el.dataset.days) || 3; renderDashboard(); },
+    "cmp-days": (el) => { S.view.cmpBack = Number(el.dataset.days) || 2; renderDashboard(); },
     "dash-preset": (el) => {
       const p = PRESETS[el.dataset.preset];
       S.view.preset = el.dataset.preset;
