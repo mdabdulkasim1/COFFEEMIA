@@ -21,7 +21,8 @@ const auth = require("./lib/auth");
 const { seedIfEmpty, warnIfDefaultPasswords } = require("./lib/seed");
 const { computeTotals, money, clampQty } = require("./lib/pricing");
 const {
-  buildReport, ordersToCsv, buildCustomers, customersToCsv,
+  buildReport,
+  buildItemTrend, ordersToCsv, buildCustomers, customersToCsv,
   normalisePhone, dateKey, todayKey,
 } = require("./lib/reports");
 const gstin = require("./lib/gstin");
@@ -804,6 +805,12 @@ async function handleApi(req, res, pathname, query) {
       report.mine = (report.byStaff.find((r) => r.key === me.name) || { amount: 0, orders: 0 });
     }
     return send(res, 200, { report });
+  }
+
+  if (route[0] === "itemtrend" && method === "GET") {
+    if (needAdmin()) return;
+    const to = str(query.to, 10) || todayKey();
+    return send(res, 200, { trend: buildItemTrend(data, to) });
   }
 
   if (route[0] === "dayclose" && method === "GET") {
