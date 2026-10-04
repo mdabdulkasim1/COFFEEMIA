@@ -1093,8 +1093,12 @@
     if (!isAdmin()) { v.dashFrom = todayStr(); v.dashTo = todayStr(); v.preset = "today"; }
 
     screen().innerHTML = '<div class="empty">Loading sales…</div>';
-    const out = await api("/dashboard?from=" + v.dashFrom + "&to=" + v.dashTo);
+    const [out, trendOut] = await Promise.all([
+      api("/dashboard?from=" + v.dashFrom + "&to=" + v.dashTo),
+      isAdmin() ? api("/itemtrend?to=" + v.dashTo) : Promise.resolve({ trend: null }),
+    ]);
     const r = out.report;
+    const trend = trendOut ? trendOut.trend : null;
     const t = r.totals;
     const cur = S.settings.currency || "";
     const sameDay = v.dashFrom === v.dashTo;
@@ -1226,6 +1230,8 @@
       Charts.slowMovers(r.slowMovers, { currency: cur, empty: "Nothing is lagging — every item sold more than four." }) + '</div></div>' +
       "</div>" +
 
+      itemTrendSection(trend, cur, v) +
+
       /* Bottom: Every item sold table with Rate & Bills columns */
       '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Every item sold</h3>' +
       '<div class="spacer"></div><span class="small muted">' + plural(everyItem.length, "item") + " · sorted by takings</span></div>" +
@@ -1249,6 +1255,77 @@
           "</tbody></table></div>"
         : '<div class="empty small">No settled bills in this period yet.</div>') +
       "</div>";
+  }
+
+  /* Every item, with today against yesterday and the last 3 / 7 / 30 days, best
+     seller at the top. The order follows whichever window is selected, so the
+     same table answers "what sells" and "what sold today". */
+  const TREND_SORTS = [
+    ["today", "Today"], ["yesterday", "Yesterday"], ["d3", "Last 3 days"],
+    ["d7", "Last 7 days"], ["d30", "Last 30 days"],
+  ];
+  function itemTrendSection(trend, cur, v) {
+    const sort = v.trendSort || "d30";
+    const all = ((trend && trend.rows) || []).slice().sort((a, b) =>
+      b[sort].amount - a[sort].amount || b.d30.amount - a.d30.amount || a.key.localeCompare(b.key));
+    // Everything shows by default — a zero is a figure worth seeing — but a long
+    // tail of dashes can be folded away once it has been read.
+    const quiet = all.filter((r) => r.d30.amount === 0).length;
+    const rows = v.trendHideQuiet ? all.filter((r) => r.d30.amount > 0) : all;
+    const totals = (trend && trend.totals) || {};
+    const sortLabel = (TREND_SORTS.find((x) => x[0] === sort) || [, "Last 30 days"])[1];
+
+    const picker = TREND_SORTS.map(([k, label]) =>
+      '<button class="btn sm ' + (sort === k ? "dark" : "") + '" data-act="trend-sort" data-sort="' + k + '">' +
+      label + "</button>").join("");
+
+    const cell = (w, dim) =>
+      '<td class="num' + (dim ? " dim" : "") + '">' + (w.amount ? fmt(w.amount) : "—") +
+      (w.qty ? '<div class="small muted">' + w.qty + " nos</div>" : "") + "</td>";
+
+    const arrow = (r) => {
+      if (r.trend === null) return '<span class="trend-flat">—</span>';
+      if (r.trend > 8) return '<span class="trend-up">▲ ' + r.trend + "%</span>";
+      if (r.trend < -8) return '<span class="trend-down">▼ ' + Math.abs(r.trend) + "%</span>";
+      return '<span class="trend-flat">● steady</span>';
+    };
+
+    const body = rows.map((r, n) =>
+      "<tr>" +
+      '<td class="rank">' + (n + 1) + "</td>" +
+      "<td><b>" + esc(r.key) + "</b>" +
+      '<div class="small muted">' + esc(r.category || "") + " · " + fmt(r.price) + "</div></td>" +
+      cell(r.today) + cell(r.yesterday, true) + cell(r.d3, true) + cell(r.d7, true) + cell(r.d30) +
+      "<td>" + (Charts.sparkline ? Charts.sparkline(r.series, {}) : "") + "</td>" +
+      '<td class="num">' + arrow(r) + "</td>" +
+      "</tr>").join("");
+
+    return (
+      '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Item sales trend</h3>' +
+      '<div class="spacer"></div><span class="small muted" style="margin-right:4px">sorted by</span>' + picker +
+      (quiet
+        ? '<button class="btn sm ' + (v.trendHideQuiet ? "dark" : "") + '" data-act="trend-quiet" style="margin-left:8px">' +
+          (v.trendHideQuiet ? "Show all " + all.length : "Hide " + quiet + " with no sales") + "</button>"
+        : "") + "</div>" +
+      '<div class="card-pad"><p class="small muted" style="margin:0">' +
+      "Every item on sale, best first by " + esc(sortLabel.toLowerCase()) + ". The line is the last 30 days; " +
+      "the arrow is today against the average of the six days before it, so one quiet day does not read as a collapse." +
+      "</p></div>" +
+      (rows.length
+        ? '<div style="overflow-x:auto"><table class="grid"><thead><tr><th></th><th>Item</th>' +
+          "<th class='num'>Today</th><th class='num'>Yesterday</th><th class='num'>3 days</th>" +
+          "<th class='num'>7 days</th><th class='num'>30 days</th><th>30-day trend</th>" +
+          "<th class='num'>Today vs usual</th></tr></thead><tbody>" + body +
+          '</tbody><tfoot><tr><th></th><th class="num">All items</th>' +
+          '<td class="num"><b>' + fmt(totals.today || 0) + "</b></td>" +
+          '<td class="num dim">' + fmt(totals.yesterday || 0) + "</td>" +
+          '<td class="num dim">' + fmt(totals.d3 || 0) + "</td>" +
+          '<td class="num dim">' + fmt(totals.d7 || 0) + "</td>" +
+          '<td class="num"><b>' + fmt(totals.d30 || 0) + "</b></td>" +
+          "<td></td><td></td></tr></tfoot></table></div>"
+        : '<div class="empty small">No settled bills in the last 30 days yet.</div>') +
+      "</div>"
+    );
   }
 
   /* ================================================================== */
@@ -2295,6 +2372,8 @@
       S.view.dashComparisonDays = Number(el.dataset.days) || 3;
       renderDashboard();
     },
+    "trend-sort": (el) => { S.view.trendSort = el.dataset.sort || "d30"; renderDashboard(); },
+    "trend-quiet": () => { S.view.trendHideQuiet = !S.view.trendHideQuiet; renderDashboard(); },
     "dash-preset": (el) => {
       const p = PRESETS[el.dataset.preset];
       S.view.preset = el.dataset.preset;

@@ -546,10 +546,35 @@
     }).join('');
   }
 
+  /**
+   * A thumbnail of one item's daily sales, for a table row. No axes and no
+   * labels — it answers "rising or fading?", and the row's own figures carry
+   * the detail.
+   */
+  function sparkline(values, opts) {
+    const o = Object.assign({ width: 76, height: 20, colour: PALETTE[0] }, opts || {});
+    const v = (values || []).map(function (n) { return Number(n) || 0; });
+    if (v.length < 2) return '<span class="spark-empty">&nbsp;</span>';
+    const max = Math.max.apply(null, v);
+    if (max <= 0) return '<span class="spark-empty">&nbsp;</span>';
+    const W = o.width, H = o.height, pad = 2;
+    const x = function (i) { return pad + (i * (W - pad * 2)) / (v.length - 1); };
+    const y = function (n) { return H - pad - (n / max) * (H - pad * 2); };
+    const d = v.map(function (n, i) { return (i ? "L" : "M") + round(x(i)) + " " + round(y(n)); }).join(" ");
+    const area = d + " L" + round(x(v.length - 1)) + " " + (H - pad) + " L" + round(x(0)) + " " + (H - pad) + " Z";
+    const last = v[v.length - 1];
+    return '<svg class="spark" viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H +
+      '" aria-hidden="true"><path d="' + area + '" fill="' + o.colour + '" fill-opacity=".14"/>' +
+      '<path d="' + d + '" fill="none" stroke="' + o.colour + '" stroke-width="1.4" stroke-linejoin="round"/>' +
+      (last > 0 ? '<circle cx="' + round(x(v.length - 1)) + '" cy="' + round(y(last)) + '" r="2" fill="' + o.colour + '"/>' : "") +
+      "</svg>";
+  }
+
   global.Charts = {
     bars: bars,
     donut: donut,
     ranked: ranked,
+    sparkline: sparkline,
     hourComparison: hourComparison,
     heatmap: heatmap,
     menuFocus: menuFocus,
@@ -558,4 +583,4 @@
     customersDayByDay: customersDayByDay,
     PALETTE: PALETTE,
   };
-})(window);
+})(typeof window !== "undefined" ? window : global);

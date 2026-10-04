@@ -1736,3 +1736,10 @@ table.grid tbody tr:hover {
   white-space: nowrap;
   overflow: visible;
 }
+
+/* 30-day sparkline & today vs usual trends */
+.spark { vertical-align: middle; display: block; }
+.spark-empty { display: inline-block; width: 76px; text-align: center; color: var(--ink-3); }
+.trend-up { color: #15803d; font-weight: 600; white-space: nowrap; }
+.trend-down { color: #b91c1c; font-weight: 600; white-space: nowrap; }
+.trend-flat { color: var(--ink-3); font-weight: 500; white-space: nowrap; }
